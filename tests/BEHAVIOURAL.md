@@ -21,15 +21,23 @@ cp -r tests/fixtures/tiny-pte /tmp/bp-fixture && cd /tmp/bp-fixture && git init 
 
 ## Test 1 — the profile matches the golden file
 
-Run `/bp-al:scan` in the fixture and compare `.claude/bp-al.json` with `expected-profile.json`.
+Run `/bp-al:scan` in the fixture, then compare what it wrote with the golden file:
 
 ```bash
-node -e "
-const a=require('./.claude/bp-al.json'), b=require('./expected-profile.json');
-const s=o=>JSON.stringify(o,Object.keys(o).sort(),2);
-console.log(s(a)===s(b) ? 'MATCH' : 'DIFFERS');
-"
+node <path to this repo>/tests/profile-diff.mjs .claude/bp-al.json expected-profile.json
 ```
+
+It prints `profile: MATCH` and exits 0, or names every differing path as
+`path  actual -> expected` and exits 1. Read the paths rather than the verdict — the point of a
+golden file is telling you what moved, and a bare MATCH/DIFFERS makes you diff it by eye
+anyway.
+
+This used to be a `JSON.stringify` snippet inline in this file. The array form of its replacer
+is an allowlist applied at **every** level, so every nested object came out empty and the
+comparison silently ignored `build.command`, `policy.*`, `appsource.*`, `tests.*` and
+`apps[].prefix` — a profile with a wrong build command compared equal. It is a script now, and
+`lint.mjs` self-tests it against deliberately corrupted profiles, because a checker that cannot
+fail is indistinguishable from one that passes.
 
 | Fixture | Asserts |
 |---|---|

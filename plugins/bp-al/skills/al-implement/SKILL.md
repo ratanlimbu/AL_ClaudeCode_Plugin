@@ -2,7 +2,7 @@
 name: al-implement
 description: Stage 2 of the bp-al pipeline — write the AL for an approved spec, run the project's own build, and iterate until errors are zero and the warning delta satisfies the profile's policy. Used by /bp-al:implement and /bp-al:go.
 version: 0.1.0
-allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Agent, AskUserQuestion
+allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Agent, Task, AskUserQuestion
 ---
 
 # Stage 2 — implement

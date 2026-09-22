@@ -99,6 +99,9 @@ belongs only on the leaf sets a customer actually assigns, never on an intermedi
 Count objects against grants and report the difference. Pages, codeunits, reports and queries
 raise no analyzer warning when they are missed; only some `tabledata` omissions do.
 
+The `permissions` theme in `bp-al:al-conventions` has the layering rules and the direct-versus-
+indirect distinction this check assumes.
+
 ## 8 — Dependencies and packaging
 
 - Every dependency is Microsoft's or is itself on AppSource. **A dependency on a per-tenant
@@ -115,6 +118,9 @@ production tenant, and the first you hear of a defect is the support ticket.
 
 Report its absence as a gap even though submission does not require it — everything else on
 this list is about the submission, and this one is about the year after it.
+
+The `telemetry` theme covers what to emit once it is configured, and the rule that decides most
+of it: nothing identifying a customer ever leaves their tenant.
 
 ## Out
 

@@ -13,6 +13,9 @@ queries are not** — no cop reports those. Add every new object to the project'
 sets in the same change, and check the object count against the grant count before claiming
 the change is done.
 
+That is the rule. The `permissions` theme covers designing the sets: layering, which ones are
+`Assignable`, and why lower case in a `tabledata` grant means something different.
+
 ## User-facing text is a label, never a literal
 
 Every message, error, confirmation and caption goes through a `Label`, with `Comment` for each

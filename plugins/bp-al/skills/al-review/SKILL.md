@@ -2,7 +2,7 @@
 name: al-review
 description: Stage 3 of the bp-al pipeline — verify an AL change against its spec independently, re-running the build, recomputing the warning delta, and checking criteria, forbidden patterns, hotspots and reachability. Blocking versus advisory follows the profile's policy block. Used by /bp-al:review and /bp-al:go, and in no-spec mode by /bp-al:check.
 version: 0.1.0
-allowed-tools: Read, Glob, Grep, Bash, Agent
+allowed-tools: Read, Glob, Grep, Bash, Agent, Task
 ---
 
 # Stage 3 — review

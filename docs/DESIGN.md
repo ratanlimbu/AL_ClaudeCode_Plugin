@@ -219,7 +219,7 @@ AppSource app publishes surface nothing in its own tree calls.
 
 This is what makes the plugin worth installing rather than just prompting well. It is
 platform-level knowledge — true on every Business Central project, independent of customer,
-publisher or domain — held as eight reference files under `skills/al-conventions/references/`
+publisher or domain — held as eleven reference files under `skills/al-conventions/references/`
 and loaded **only** by the stage that needs the theme in question.
 
 A short index in `SKILL.md` names the themes so an agent knows when to reach for one. The
@@ -227,10 +227,13 @@ bodies never enter context unprompted, and the index is the one file here held t
 budget, because keeping them out is its entire job.
 
 `performance` · `warnings` · `correctness` · `extension-model` are the four the pipeline was
-built around. `testing` · `events` · `api` · `upgrade` were added afterwards, and each covers a
-class of defect that ships green: a suite that asserts less than it claims, a subscriber that
-rolls back its publisher, an API field renamed by a cosmetic edit, an upgrade that re-runs
-because nobody set the tag.
+built around. The other seven were added afterwards, and every one covers a class of defect
+that ships green: a suite that asserts less than it claims, a subscriber that rolls back its
+publisher, an API field renamed by a cosmetic edit, an upgrade that re-runs because nobody set
+the tag, a codeunit nobody but SUPER can execute, a field with no `ApplicationArea` that simply
+does not render, an incident with no signal because nobody emitted one in advance.
+
+`testing` · `events` · `api` · `upgrade` · `permissions` · `pages` · `telemetry`.
 
 ### 7.1 Performance, by construction
 
@@ -395,7 +398,8 @@ AL_ClaudeCode_Plugin/
 │     ├─ al-appsource/   submission readiness; reports only
 │     └─ al-conventions/ SKILL.md (index) + references/
 │        ├─ performance.md · warnings.md · correctness.md · extension-model.md
-│        └─ testing.md · events.md · api.md · upgrade.md
+│        ├─ testing.md · events.md · api.md · upgrade.md
+│        └─ permissions.md · pages.md · telemetry.md
 ├─ tests/
 │  ├─ fixtures/tiny-pte/ · fixtures/multi-app-product/   (each with expected-profile.json)
 │  ├─ lint.mjs          structural, scripted
@@ -431,7 +435,16 @@ number costs more than ten lines do. Raising a budget is a deliberate act and is
 rather than done quietly.
 
 **Behavioural, fixture-driven** — run `/bp-al:scan` against each fixture and compare the
-produced profile with a golden file. Then assert that `git status` inside the fixture shows
+produced profile with a golden file, using `tests/profile-diff.mjs`, which reports differing
+paths rather than a verdict. `null` and absent are distinct there, because the profile's
+degrade-loudly design rests on the difference, and arrays compare by index, because `authority`
+is in precedence order.
+
+The comparison is a script, and `lint.mjs` self-tests it against deliberately corrupted
+profiles, because the inline snippet it replaced could not fail: the array form of
+`JSON.stringify`'s replacer is an allowlist applied at every level, so it emptied every nested
+object and compared a wrong build command equal to the right one. A checker that cannot fail is
+indistinguishable from one that passes, and nothing else in this suite would have noticed. Then assert that `git status` inside the fixture shows
 `.claude/bp-al.json` and **nothing else**. Guarantee 2 of the adopt-in-place contract is the
 one most likely to regress, so it gets its own before-and-after tree diff.
 
@@ -478,12 +491,31 @@ silently rewrite line endings are caught.
 Also settled while building: `model: inherit` is a legal value, so the lint permits it rather
 than requiring the key's absence — the rule §10 wants is *never pinned*, not *never present*.
 
+- **Verified against the installed official marketplace**, rather than against memory, by
+  surveying every command, skill and agent in `claude-plugins-official`:
+  - `effort:` is real — eight official agents use it.
+  - `Skill` is a legal `allowed-tools` entry — three official commands list it.
+  - `allowed-tools` as a bare comma-separated list is the dominant form, used ninety times
+    against a handful of JSON arrays.
+  - `version:` in a `SKILL.md` frontmatter is used by fifteen official skills.
+  - Both manifests match the official shape exactly, including the `$schema` URL.
+
+- **The subagent tool has two names.** Every `allowed-tools` list in the official marketplace
+  spells it `Task`; this client's own tool listing calls it `Agent`. Nothing in this repository
+  can determine which a given Claude Code build honours, so every command and skill that
+  dispatches lists **both**, and the lint requires both. An unrecognised name in a whitelist is
+  inert; a missing one silently blocks the only thing the command exists to do — the same
+  failure mode as the omitted `Skill`, found the same way.
+
+  The reverse check takes both spellings too: an agent granted either can spawn further agents,
+  which §10 forbids.
+
 ## 15. Deferred
 
 Estimation and pre-sales · documentation and release-note generation · translation tooling
-beyond the completeness check in `al-appsource` · a Copilot/AI-extensibility theme · a `pages`
-theme covering page design, actions and background tasks · running AppSourceCop's
-breaking-change analysis directly rather than reporting whether it can run.
+beyond the completeness check in `al-appsource` · a Copilot/AI-extensibility theme · running
+AppSourceCop's breaking-change analysis directly rather than reporting whether it can run.
 
-Delivered since the first draft, and no longer deferred: test execution, `/bp-al:check`, and
-MCP as an opt-in rather than a bundled dependency.
+Delivered since the first draft, and no longer deferred: test execution, `/bp-al:check`, MCP as
+an opt-in rather than a bundled dependency, and the `permissions`, `pages` and `telemetry`
+themes.

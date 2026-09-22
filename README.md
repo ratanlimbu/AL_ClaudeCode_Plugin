@@ -96,7 +96,7 @@ exactly the projects that need it most.
 ## What it costs
 
 **Nothing when idle.** No always-on rules, no per-turn hooks, no injected context. The profile
-is read once per run by the stage that needs it; the quality baseline is eight reference files
+is read once per run by the stage that needs it; the quality baseline is eleven reference files
 behind an index, and a stage loads only the theme its change touches.
 
 Subagent definitions **pin no model**, so a colleague on a smaller model stays on it and

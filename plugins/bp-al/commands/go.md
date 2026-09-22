@@ -1,7 +1,7 @@
 ---
 description: Run spec, implement and review end to end, with a human gate between each stage
 argument-hint: "<what you want built or changed> [--quick|--deep]"
-allowed-tools: Skill, Read, Glob, Grep, Bash, Write, Edit, Agent, AskUserQuestion
+allowed-tools: Skill, Read, Glob, Grep, Bash, Write, Edit, Agent, Task, AskUserQuestion
 ---
 
 Sequence the three stages. All behaviour lives in the stage skills; this command only orders

@@ -1,7 +1,7 @@
 ---
 description: Stage 3 — verify the change against its spec, independently and from a fresh context
 argument-hint: "[path to spec, or omit to use the spec from this conversation]"
-allowed-tools: Skill, Read, Glob, Grep, Bash, Agent
+allowed-tools: Skill, Read, Glob, Grep, Bash, Agent, Task
 ---
 
 Load the `bp-al:al-review` skill with the Skill tool and follow it exactly.

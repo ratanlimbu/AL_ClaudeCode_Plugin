@@ -8,10 +8,12 @@
 //   4  every relative markdown link resolves
 //   5  no SKILL.md, agent or command exceeds its line budget
 //   6  nothing customer-specific ships — §3.1's guarantee, enforced rather than promised
+//   7  the golden-profile comparison actually detects a difference
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, dirname, resolve, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { diffProfiles } from "./profile-diff.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGIN = join(ROOT, "plugins", "bp-al");
@@ -163,12 +165,20 @@ for (const file of commandFiles) {
       fail("commands", `${rel(file)} references "bp-al:${name}", which is neither a skill nor an agent`);
   }
 
+  // The subagent-dispatch tool is named Task in every allowed-tools list across the official
+  // marketplace, and Agent in this client's own tool listing. Which one a given Claude Code
+  // build honours is not something this repository can determine, so the commands list both:
+  // an unrecognised name in a whitelist is inert, and a missing one silently blocks the only
+  // thing the command exists to do.
   const allowed = (fm?.["allowed-tools"] ?? "").split(",").map((t) => t.trim());
   if (allowed.length && allowed[0] !== "") {
     if (wantsSkill && !allowed.includes("Skill"))
       fail("commands", `${rel(file)} loads a skill but its allowed-tools omits "Skill"`);
-    if (wantsAgent && !allowed.includes("Agent"))
-      fail("commands", `${rel(file)} dispatches an agent but its allowed-tools omits "Agent"`);
+    if (wantsAgent && !(allowed.includes("Agent") && allowed.includes("Task")))
+      fail(
+        "commands",
+        `${rel(file)} dispatches an agent but its allowed-tools does not list both "Agent" and "Task"`
+      );
   } else if (wantsSkill || wantsAgent) {
     fail("commands", `${rel(file)} reaches for a skill or agent but declares no allowed-tools`);
   }
@@ -210,8 +220,13 @@ for (const file of agentFiles) {
     fail("agents", `${rel(file)} pins model "${fm.model}" — subagents must inherit the session's model`);
   if (fm.effort === undefined)
     fail("agents", `${rel(file)} sets no effort — §10 requires a reduced, explicit budget`);
-  if (fm.tools && /\bAgent\b/.test(fm.tools))
-    fail("agents", `${rel(file)} grants the Agent tool — subagents may not spawn further agents`);
+  // Both spellings, for the same reason the command check accepts both: an agent granted
+  // either one can spawn further agents, and §10 says none of them may.
+  if (fm.tools && /\b(Agent|Task)\b/.test(fm.tools))
+    fail(
+      "agents",
+      `${rel(file)} grants the ${/\bAgent\b/.test(fm.tools) ? "Agent" : "Task"} tool — subagents may not spawn further agents`
+    );
 }
 
 // ------------------------------------------------- 4. relative links resolve
@@ -278,6 +293,67 @@ for (const file of allFiles.filter((p) => p.endsWith("app.json"))) {
     const value = app[field];
     if (value && !ALLOWED_EXAMPLE_NAMES.includes(value))
       fail("purity", `${rel(file)} has ${field} "${value}", which is not a declared fictional example`);
+  }
+}
+
+// ------------------------------------------------- 7. the golden comparison detects a difference
+//
+// Check 7 verifies check 7's own instrument. The comparison this replaced looked like it
+// worked and compared nothing below the top level, so a fixture with a wrong build command
+// passed for the whole life of the test. A checker that cannot fail is indistinguishable from
+// one that passes, and nothing else here would have noticed.
+//
+// Each case corrupts a real golden profile in one place and asserts the diff catches exactly
+// that path. Cases live here rather than in profile-diff.mjs so that running the lint runs
+// them, and nobody has to remember a second command.
+
+{
+  const goldenPath = join(ROOT, "tests", "fixtures", "tiny-pte", "expected-profile.json");
+  const golden = existsSync(goldenPath) ? readJson(goldenPath, "profile-diff") : null;
+
+  if (!golden) {
+    fail("profile-diff", "tiny-pte/expected-profile.json is missing — the self-test cannot run");
+  } else {
+    const clone = () => JSON.parse(JSON.stringify(golden));
+    const cases = [
+      ["identical profiles match", (p) => p, []],
+      ["a nested scalar", (p) => { p.build.command = "wrong"; return p; }, ["build.command"]],
+      // Replacing a four-element array with a one-element one is reported as the length, the
+      // element whose value changed, and the three that went missing — not as one vague
+      // "blockOn differs". Which entries a project dropped is the whole question here.
+      ["a nested array", (p) => { p.policy.blockOn = ["nonsense"]; return p; },
+        ["policy.blockOn.length", "policy.blockOn[0]", "policy.blockOn[1]",
+         "policy.blockOn[2]", "policy.blockOn[3]"]],
+      ["one element of a nested array", (p) => { p.policy.advisory[2] = "wrong"; return p; },
+        ["policy.advisory[2]"]],
+      ["a nested enum", (p) => { p.appsource.target = "wrong"; return p; }, ["appsource.target"]],
+      ["a value inside an array", (p) => { p.apps[0].prefix = "XXX"; return p; }, ["apps[0].prefix"]],
+      ["null replaced by a value", (p) => { p.tests.runCommand = "wrong"; return p; },
+        ["tests.runCommand"]],
+      ["a field deleted entirely", (p) => { delete p.policy.requireTests; return p; },
+        ["policy.requireTests"]],
+      ["a field added", (p) => { p.policy.surprise = true; return p; }, ["policy.surprise"]],
+      ["array order", (p) => { p.analyzers.reverse(); return p; }, ["analyzers[0]", "analyzers[2]"]],
+    ];
+
+    for (const [name, corrupt, expectedPaths] of cases) {
+      const paths = diffProfiles(corrupt(clone()), golden).map((d) => d.path).sort();
+      const want = [...expectedPaths].sort();
+      if (JSON.stringify(paths) !== JSON.stringify(want))
+        fail(
+          "profile-diff",
+          `${name}: diff reported [${paths.join(", ")}], expected [${want.join(", ")}]`
+        );
+    }
+
+    // `null` and absent are different values, and the profile's whole degrade-loudly design
+    // rests on the distinction: a detection step that found nothing writes null, and a field
+    // that is merely missing changes the shape every later stage reads by name.
+    const nulled = clone();
+    const removed = clone();
+    delete removed.build.command;
+    if (diffProfiles(removed, nulled).length === 0)
+      fail("profile-diff", "an absent field compares equal to a null one");
   }
 }
 

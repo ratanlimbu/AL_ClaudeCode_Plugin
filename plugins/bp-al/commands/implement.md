@@ -1,7 +1,7 @@
 ---
 description: Stage 2 — write the AL for an approved spec, build it, and iterate to clean
 argument-hint: "[path to spec, or omit to use the spec from this conversation]"
-allowed-tools: Skill, Read, Glob, Grep, Bash, Write, Edit, Agent, AskUserQuestion
+allowed-tools: Skill, Read, Glob, Grep, Bash, Write, Edit, Agent, Task, AskUserQuestion
 ---
 
 Load the `bp-al:al-implement` skill with the Skill tool and follow it exactly.
