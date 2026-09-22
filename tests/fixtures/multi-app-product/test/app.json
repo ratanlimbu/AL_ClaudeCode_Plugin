@@ -1,0 +1,31 @@
+{
+  "id": "b9d41e63-7c2a-4f58-9e10-3fa5c8d72b16",
+  "name": "Fabrikam Field Service Test",
+  "publisher": "Fabrikam",
+  "version": "1.0.0.0",
+  "brief": "Fictional fixture test app. Not a real product.",
+  "target": "Test",
+  "platform": "26.0.0.0",
+  "application": "26.0.0.0",
+  "dependencies": [
+    {
+      "id": "8a1c9d20-33bf-4e07-b5a2-90c3f7e11a04",
+      "name": "Fabrikam Field Service",
+      "publisher": "Fabrikam",
+      "version": "1.0.0.0"
+    },
+    {
+      "id": "dd0be2ea-f733-4d65-bb34-a28f4624fb14",
+      "name": "Library Assert",
+      "publisher": "Microsoft",
+      "version": "26.0.0.0"
+    }
+  ],
+  "idRanges": [
+    {
+      "from": 50300,
+      "to": 50349
+    }
+  ],
+  "runtime": "14.0"
+}

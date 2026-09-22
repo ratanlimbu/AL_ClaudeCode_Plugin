@@ -1,0 +1,2 @@
+This directory exists so the fixture has a spec directory for `/bp-al:scan` to find.
+The plugin never creates one — it only records a directory that is already there.

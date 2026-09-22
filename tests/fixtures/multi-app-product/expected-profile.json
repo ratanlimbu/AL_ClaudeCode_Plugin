@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "tier": "product",
+  "apps": [
+    {
+      "path": "app",
+      "name": "Fabrikam Field Service",
+      "idRanges": [
+        [
+          50200,
+          50299
+        ]
+      ],
+      "prefix": "FFS",
+      "isTest": false
+    },
+    {
+      "path": "test",
+      "name": "Fabrikam Field Service Test",
+      "idRanges": [
+        [
+          50300,
+          50349
+        ]
+      ],
+      "prefix": "FFS",
+      "isTest": true
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "Fabrikam Core",
+      "sourcePath": null
+    }
+  ],
+  "analyzers": [
+    "CodeCop",
+    "UICop",
+    "AppSourceCop"
+  ],
+  "build": {
+    "command": "pwsh -File ./build.ps1 -Project app",
+    "cwd": null,
+    "warningPolicy": "no-new"
+  },
+  "tests": {
+    "present": true,
+    "path": "test",
+    "runCommand": null
+  },
+  "authority": [
+    "CLAUDE.md",
+    "CONVENTIONS.md"
+  ],
+  "specs": {
+    "mode": "file",
+    "dir": "docs/specs"
+  },
+  "appsource": {
+    "target": "appsource",
+    "previousVersionPath": null
+  },
+  "hotspots": [],
+  "forbidden": [],
+  "policy": {
+    "blockOn": [
+      "error",
+      "forbidden",
+      "criterion-not-met",
+      "warning-delta"
+    ],
+    "advisory": [
+      "scope",
+      "reachability",
+      "performance",
+      "hotspot",
+      "style"
+    ],
+    "requireTests": false
+  }
+}

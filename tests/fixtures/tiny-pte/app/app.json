@@ -1,0 +1,16 @@
+{
+  "id": "0f5b2e4c-1d7a-4a3e-9c21-6b8e4f0a1d33",
+  "name": "Contoso Warehouse Ext",
+  "publisher": "Contoso",
+  "version": "1.0.0.0",
+  "brief": "Fictional fixture extension. Not a real product.",
+  "platform": "26.0.0.0",
+  "application": "26.0.0.0",
+  "idRanges": [
+    {
+      "from": 50100,
+      "to": 50149
+    }
+  ],
+  "runtime": "14.0"
+}

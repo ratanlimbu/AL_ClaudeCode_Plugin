@@ -1,0 +1,90 @@
+# Performance, by construction
+
+Written for the implementer, not left for the reviewer. Slow AL compiles, passes tests, and
+ships — nothing mechanical catches it, which is why it is a design-time concern rather than a
+review-time one.
+
+The theme behind every rule below: **the expensive thing is data crossing the boundary
+between the service tier and the database**, not the AL statements around it.
+
+## Read only the fields you use
+
+Declare partial records. A record variable with no field declaration drags every column,
+including BLOBs, for every row.
+
+```al
+var
+    Item: Record Item;
+begin
+    Item.SetLoadFields("No.", Description, "Base Unit of Measure");
+```
+
+The rule has one trap: touching a field you did not load throws at runtime rather than
+loading it lazily. Load what the whole procedure uses, not what the next line uses.
+
+## Never calculate inside a loop
+
+`CalcFields` inside `repeat..until` is one round trip per row. Move it out, or declare the
+FlowField with `SetAutoCalcFields` before the loop so the platform folds it into one query.
+
+The same applies to `CalcSums`: call it once over a filtered set, never per record.
+
+## Iterate with FindSet
+
+`FindSet()` fetches in batches; `Find('-')` with `Next()` does not. Use the writable overload
+`FindSet(true)` **only when the loop actually modifies** — it takes locks you otherwise do not
+need, and a read loop holding write locks is how a batch job blocks a user.
+
+`SetLoadFields` before `FindSet`, not after.
+
+## Existence is its own question
+
+```al
+if not Rec.IsEmpty() then          // asks the database "any?"
+if Rec.Count() > 0 then            // counts every matching row to answer "any?"
+if Rec.FindFirst() then            // fetches a whole row to answer "any?"
+```
+
+Use `IsEmpty` when the answer is yes-or-no. Use `Count` only when the number itself is the
+answer, and never inside a loop.
+
+## Filter before you read, on a key that supports it
+
+A `SetRange` on a field with no supporting key scans. Check that a key exists whose leading
+fields match your filter; add one if the filter is a hot path, and accept that every new key
+costs on every write.
+
+`SetCurrentKey` before the filters, not after. `SetFilter` with `%1` parameters rather than
+string concatenation — concatenation is both slower to parse and an injection surface when any
+part of it is user input.
+
+## Aggregate with the platform, not in AL
+
+FlowFields, SIFT and query objects push aggregation into the database. A `repeat..until` that
+accumulates a total in an AL variable moves every row across the wire to compute one number.
+
+## Never nest loops over large tables
+
+A loop inside a loop is a Cartesian read. Stage the inner set into a temporary record once,
+then read from it — a temporary table lives in memory and costs no round trip.
+
+## Commit is not a control-flow tool
+
+`Commit` inside a loop, or before a call you expect might fail, splits one transaction into
+many and leaves partial state behind on error. **Transaction boundaries belong to the caller.**
+The legitimate uses are narrow and deliberate; if you are reaching for it to make something
+work, the something is wrong.
+
+## Prefer set-based operations
+
+`ModifyAll` and `DeleteAll` on a filtered set beat a `repeat..until` of per-record calls — but
+only where the semantics allow it. They do not fire `OnModify`/`OnDelete` triggers by default,
+so check that nothing depends on those before converting a loop.
+
+## Keep work out of per-row triggers
+
+`OnAfterGetRecord` runs once per visible row, again on every scroll and every refresh. A
+`CalcFields`, a lookup or a computed FlowField there multiplies by the page size. Move it to
+the source table as a FlowField, or compute it once on open.
+
+The same for `OnAfterGetCurrRecord` and for repeating `OnValidate` work on a subform line.

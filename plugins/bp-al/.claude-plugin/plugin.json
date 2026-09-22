@@ -1,0 +1,17 @@
+{
+  "name": "bp-al",
+  "description": "Best practices for AL development. A command-driven spec -> implement -> review pipeline for Microsoft Dynamics 365 Business Central. It profiles the repository as it stands, records what it found in one file, and never imposes a structure — so it is safe to add to a project that is already halfway through its life.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Ratan Limbu"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/ratanlimbu/AL_ClaudeCode_Plugin",
+  "keywords": [
+    "business-central",
+    "dynamics-365",
+    "al",
+    "erp",
+    "code-review"
+  ]
+}

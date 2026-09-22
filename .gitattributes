@@ -1,0 +1,5 @@
+# Fixture AL files are stored CRLF on purpose, matching real AL repositories, so that a
+# scripted edit which silently rewrites line endings is caught by the behavioural tests.
+# Without this, git normalises them on checkout and the test proves nothing.
+* text=auto
+tests/fixtures/**/*.al -text

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "tier": "customisation",
+  "apps": [
+    {
+      "path": "app",
+      "name": "Contoso Warehouse Ext",
+      "idRanges": [
+        [
+          50100,
+          50149
+        ]
+      ],
+      "prefix": "CWE",
+      "isTest": false
+    }
+  ],
+  "dependencies": [],
+  "analyzers": [
+    "CodeCop",
+    "UICop",
+    "PerTenantExtensionCop"
+  ],
+  "build": {
+    "command": null,
+    "cwd": null,
+    "warningPolicy": "no-new"
+  },
+  "tests": {
+    "present": false,
+    "path": null,
+    "runCommand": null
+  },
+  "authority": [],
+  "specs": {
+    "mode": "inline",
+    "dir": null
+  },
+  "appsource": {
+    "target": "pte",
+    "previousVersionPath": null
+  },
+  "hotspots": [],
+  "forbidden": [],
+  "policy": {
+    "blockOn": [
+      "error",
+      "forbidden",
+      "criterion-not-met",
+      "warning-delta"
+    ],
+    "advisory": [
+      "scope",
+      "reachability",
+      "performance",
+      "hotspot",
+      "style"
+    ],
+    "requireTests": false
+  }
+}
