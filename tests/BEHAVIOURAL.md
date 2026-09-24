@@ -42,7 +42,7 @@ fail is indistinguishable from one that passes.
 | Fixture | Asserts |
 |---|---|
 | `tiny-pte` | `tier: customisation` · one app · prefix derived from object names, since there is no `AppSourceCop.json` · `build.command: null`, because nothing is detectable · `authority: []` — a repository with no documentation at all · `specs.mode: inline`, and **no `docs/` directory created** |
-| `multi-app-product` | `tier: product`, selected by the second app · the test app detected by `"target": "Test"` **and** by its `Library Assert` dependency · prefix `FFS` from `AppSourceCop.json`, not derived · `build.command` taken from the `tasks.json` AL build task **and confirmed at the prompt** · `authority` in precedence order, `CLAUDE.md` before `CONVENTIONS.md` · `specs.dir: docs/specs`, because it already exists |
+| `multi-app-product` | `tier: product`, selected by the second app · the test app detected by its `Library Assert` dependency **and** by its `Subtype = Test` codeunit · prefix `FFS` from `AppSourceCop.json`, not derived · `build.command` taken from the `tasks.json` AL build task **and confirmed at the prompt** · `authority` in precedence order, `CLAUDE.md` before `CONVENTIONS.md` · `specs.dir: docs/specs`, because it already exists |
 
 Both fixtures also assert:
 

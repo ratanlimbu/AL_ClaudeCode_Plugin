@@ -19,8 +19,18 @@ begin
     Item.SetLoadFields("No.", Description, "Base Unit of Measure");
 ```
 
-The rule has one trap: touching a field you did not load throws at runtime rather than
-loading it lazily. Load what the whole procedure uses, not what the next line uses.
+The rule has one trap: touching a field you did not load does **not** fail. The platform
+quietly does a just-in-time `Get` to fetch it — another round trip, per record if it happens in
+a loop over a copy passed by value — and a JIT load can fail with *Inconsistent read* if
+another session changed the row meanwhile. Load what the whole procedure uses, not what the
+next line uses.
+
+Table extensions are where it pays most. Extension fields live in a companion table that is
+joined on every read; an extension with no field in the load set is left out of the join
+entirely.
+
+Partial records suit reads. A record you will insert, delete, rename, `TransferFields` or copy
+to a temporary record needs every field, so loading few of them first only buys a JIT load.
 
 ## Never calculate inside a loop
 
@@ -54,8 +64,9 @@ A `SetRange` on a field with no supporting key scans. Check that a key exists wh
 fields match your filter; add one if the filter is a hot path, and accept that every new key
 costs on every write.
 
-`SetCurrentKey` before the filters, not after. `SetFilter` with `%1` parameters rather than
-string concatenation — concatenation is both slower to parse and an injection surface when any
+`SetCurrentKey` sets the sort order; it does not choose the index, and whether it is called
+before or after the filters makes no difference — the query is built when the find runs.
+`SetFilter` with `%1` parameters rather than string concatenation — concatenation is both slower to parse and an injection surface when any
 part of it is user input.
 
 ## Aggregate with the platform, not in AL

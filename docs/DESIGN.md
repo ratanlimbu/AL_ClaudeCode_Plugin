@@ -87,15 +87,21 @@ These ship in the README as guarantees. They are the reason the plugin is safe t
 a colleague mid-project.
 
 1. Its entire configuration footprint is one file: `.claude/bp-al.json`. The only other
-   things it ever writes are AL source you asked for and, on the `product` tier, the spec
-   documents described in guarantee 4.
+   things it ever writes are the change you asked for, the spec documents described in
+   guarantee 4 on the `product` tier, and `.mcp.json` — which only `/bp-al:mcp` writes, only on
+   an explicit yes, and never by merging over an entry you already had.
 2. It never creates a directory layout, and never moves or renames anything.
-3. It never edits `CLAUDE.md`, `README`, `app.json`, or any other file it did not create.
+3. Its own tooling never edits `CLAUDE.md`, `README`, `app.json`, or any other file it did not
+   create. **The change you asked for is the one exception, and it is bounded by the approved
+   spec:** stage 2 edits only the files that spec names — which can include `app.json` (a
+   dependency, a feature flag, a version), the document where the project records claimed
+   object IDs, or a translation file the build regenerated. A file the spec does not name is
+   out of scope and reported as such.
 4. Spec documents are written only where the profile already points, and only on the
    `product` tier.
 5. What cannot be determined is recorded as `null`, and the affected stage degrades
    **loudly** — reporting `UNVERIFIED` — rather than guessing.
-6. Uninstalling is deleting one JSON file.
+6. Uninstalling is deleting one JSON file — two if you took the optional MCP setup.
 
 It must work on a repository that has uncommitted changes, a non-standard layout, several
 apps, or no documentation at all.
@@ -130,8 +136,8 @@ Each step falls through to the next:
 
 - **Apps** — glob `**/app.json`, excluding `.alpackages`, `node_modules`, `.git`. Each match
   is an app. Read `name`, `publisher`, `id`, `idRanges`, `dependencies`, `internalsVisibleTo`.
-- **Test apps** — `"target": "Test"`, or a dependency on a Microsoft test library, or an app
-  name matching `*Test*`.
+- **Test apps** — a dependency on a Microsoft test library, or a `Subtype = Test` codeunit, or
+  an app name matching `*Test*`. (`app.json`'s `target` takes only `Cloud` and `OnPrem`.)
 - **Prefix / affix** — `AppSourceCop.json` `mandatoryPrefix` / `mandatoryAffixes`; otherwise
   the most common object-name prefix across `.al` files.
 - **Analyzers** — the `al.codeAnalyzers` entries in `.vscode/settings.json`, plus any

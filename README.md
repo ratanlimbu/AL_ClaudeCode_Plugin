@@ -18,11 +18,14 @@ These are guarantees, not intentions. They are the reason this is safe to hand t
 mid-project.
 
 1. Its entire configuration footprint is one file: **`.claude/bp-al.json`**. The only other
-   things it ever writes are AL source you asked for, the spec documents described in
+   things it ever writes are the change you asked for, the spec documents described in
    guarantee 4 on the `product` tier, and `.mcp.json` — which only `/bp-al:mcp` writes, only
    on an explicit yes, and never by merging over an entry you already had.
 2. It **never creates a directory layout**, and never moves or renames anything.
-3. It **never edits** `CLAUDE.md`, `README`, `app.json`, or any other file it did not create.
+3. Its tooling **never edits** `CLAUDE.md`, `README`, `app.json`, or any other file it did not
+   create. The change you asked for is the one exception, and the approved spec bounds it: stage
+   2 edits only the files that spec names — which may include `app.json` or the document where
+   your project records claimed object IDs.
 4. Spec documents are written **only where your profile already points**, and only on the
    `product` tier.
 5. What cannot be determined is recorded as `null`, and the affected stage degrades **loudly**

@@ -39,7 +39,9 @@ PROBLEM        <what is wrong or missing, in the project's own terms>
 RULE SOURCE    <the regulation, ticket, specification section or conversation that
                 decides the behaviour — and where to read it>
 OBJECTS        <each object to add or change: type, name, ID where the project
-                claims IDs, and which app it lives in>
+                claims IDs, and which app it lives in — plus every non-AL file
+                the change must edit (app.json, the ID register), since stage 2
+                edits nothing this list does not name>
 CRITERIA       <numbered; each one independently checkable by someone who did not
                 write the code>
 OUT OF SCOPE   <explicitly; the things a reasonable reader would assume are included

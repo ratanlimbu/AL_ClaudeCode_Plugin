@@ -61,7 +61,7 @@ shape.
 | `apps[].name` | string | From `app.json`. |
 | `apps[].idRanges` | `[[from, to], …]` | From `app.json`. Used to check that claimed IDs are in range. |
 | `apps[].prefix` | string \| null | Mandatory prefix or affix. `null` when the project has none, or when detection was not confident. |
-| `apps[].isTest` | boolean | Test app, by `"target": "Test"`, a Microsoft test-library dependency, or a `*Test*` name. |
+| `apps[].isTest` | boolean | Test app, by a Microsoft test-library dependency, a `Subtype = Test` codeunit, or a `*Test*` name. |
 | `dependencies[]` | array | Non-Microsoft dependencies whose source you have locally. |
 | `dependencies[].name` | string | As it appears in `app.json`. |
 | `dependencies[].sourcePath` | string \| null | Where that dependency's source lives. **Searched before anything is reported as missing** — the object you need may already exist one layer down. |
@@ -165,9 +165,10 @@ the projects that had tightened.
 
 ### `policy.requireTests`
 
-Test *execution* is not in this version — `tests.runCommand` is reserved and stays `null` — so
-`requireTests` defaults to `false`. Without that default, every repository with a test app
-returns `UNVERIFIED` forever, and a verdict that is always the same carries no information.
+Stages 2 and 3 run the tests when `tests.runCommand` is set, and it is detected and confirmed
+like `build.command`. It is still `null` on every repository whose tests run only in CI, so
+`requireTests` defaults to `false`. Without that default, every such repository returns
+`UNVERIFIED` forever, and a verdict that is always the same carries no information.
 
 It is not a licence to be vague. The review's `TESTS` line is printed whatever the setting
 says, so `VERIFIED` never gets to mean "the tests passed" when what happened is that they did
