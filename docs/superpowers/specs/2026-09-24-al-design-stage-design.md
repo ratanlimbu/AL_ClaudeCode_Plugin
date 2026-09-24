@@ -39,6 +39,7 @@ any authority document; a bundled symbol server; profile schema changes.
 | Event verification | source, then `.alpackages` symbols at the targeted version | Base App source is almost never on disk; symbols almost always are. |
 | Minimum counts | a triage check, not a quota | Fewer than three genuine decisions means the request is not HIGH. |
 | Attribution | full MIT notice in a notices file | MIT requires the permission notice in substantial portions, not a credit line. |
+| Missing knowledge | add an `integration` theme and a locking section | The design stage may only recommend from shipped, verified baseline — not from memory. |
 
 ## 3. Components
 
@@ -76,7 +77,7 @@ confirms or overrides in either direction.
   objects are consumed through `internalsVisibleTo` / a dependent app — a new public
   procedure, event, API page or interface.
 - **Background execution or concurrency** — Job Queue, `StartSession`, `TaskScheduler`,
-  page background tasks, explicit locking.
+  explicit locking. (Page background tasks are read-only and are not a HIGH signal.)
 - **Integration outside Business Central** — any HTTP, webhook, business event, Dataverse,
   Power Automate or Azure component.
 - **App boundary** — a change spanning two apps, or adding a dependency between them.
@@ -151,14 +152,15 @@ reverse · the `al-conventions` theme to read*. Areas:
 |---|---|---|
 | Data model | new table vs table extension; keys for the expected filters; FlowField vs stored (watch circular FlowFields); relations; **TransferFields ID parity across document → posted chains** | `extension-model`, `performance` |
 | Transactions and locking | where the commit boundary sits; what runs inside the posting transaction and what is deferred; locking and read isolation | `performance`, `correctness` |
-| Background execution | Job Queue vs `StartSession` vs `TaskScheduler` vs page background task — retry, error visibility, licensing and session context differ | `performance`, `telemetry` |
-| Events and extensibility | which base events to subscribe to (verified, §3.4); which events this app publishes; **interface + enum over proliferating `IsHandled`**, which Microsoft now discourages | `events` |
+| Background execution | Job Queue vs `StartSession` vs `TaskScheduler` vs page background task — retry, error visibility, licensing and session context differ | `integration`, `telemetry` |
+| Events and extensibility | which base events to subscribe to (verified, §3.4); **whether an event this app publishes is isolated** (a subscriber cannot break the publisher, but cannot veto it either); interface + enum for one-of-N behaviour, and **`IsHandled` as a last resort** — competing subscribers silently override each other | `events` |
 | App placement (product tier) | which app owns each new object; dependency direction stays acyclic | `extension-model` |
 | Public vs internal surface | `Access = Internal` by default; what is public and why; `internalsVisibleTo`. Published public surface can only be obsoleted, never removed | `upgrade`, `api` |
 | Setup and toggles | setup table vs Feature Management key; per-company vs global | `correctness` |
-| Integration | API v2.0 vs custom API (publisher / group / version); OData; webhooks; external business events; Dataverse / virtual tables; Power Automate | `api` |
-| Microsoft ecosystem boundary | what does not belong in AL at all — Azure Functions, Service Bus, Logic Apps — when the BC sandbox forbids it (no file system, no .NET on SaaS) or the load does not fit a session | `api` |
-| Secrets and authentication | `IsolatedStorage` with `SecretText`; OAuth flows; Azure Key Vault for AppSource apps. **Never a secret in a table field.** | `permissions` |
+| Integration — inbound | API v2.0 vs custom API (publisher / group / version); OData; webhooks | `api` |
+| Integration — outbound | `HttpClient`, timeouts, retry and idempotency; external business events; Dataverse / virtual tables; Power Automate | `integration` |
+| Microsoft ecosystem boundary | what does not belong in AL at all — Azure Functions, Service Bus, Logic Apps — when the BC sandbox forbids it (no file system, no .NET on SaaS) or the load does not fit a session | `integration` |
+| Secrets and authentication | `IsolatedStorage` with `SecretText`; OAuth flows; `keyVaultUrls` for app secrets. **Never a secret in a table field.** | `integration` |
 | Security | permission-set hierarchy; data classification on every field | `permissions` |
 | Upgrade and deployment | upgrade codeunits and upgrade tags; `DataTransfer` for bulk moves; obsoletion with `#if not CLEAN` where AppSource applies; idempotency | `upgrade` |
 | Telemetry | which feature-usage and error signals to emit, and their dimensions | `telemetry` |
@@ -173,8 +175,11 @@ names it, and the stage checks it against the `runtime` / `application` read in 
 Verification order for a named event, procedure or object:
 
 1. **Source on disk** — the repository, then every `dependencies[].sourcePath`.
-2. **Symbol packages** — `.alpackages/` and `al.packageCachePath` (the paths `al-profile`
-   already searches for `previousVersionPath`). Pick the package whose version matches the
+2. **Symbol packages** — in order: `.alpackages/` beside each `app.json`; the
+   `al.packageCachePath` entries in `.vscode/settings.json`; the `baselinePackageCachePath` in
+   `AppSourceCop.json`. These are read, never assumed — AL-Go and container-based repositories
+   often have none of them on disk, because symbols are fetched at build time, and that case
+   goes straight to step 4 with the reason stated. Pick the package whose version matches the
    app's `application` (Base Application) or the dependency's declared version. An `.app` is
    a NAVX header followed by a zip archive containing `SymbolReference.json`; extract that one
    entry to the scratchpad or a temp directory — **never into the repository** — and search
@@ -248,6 +253,42 @@ supersedes the design (§3.2 step 8) or amends the spec.
   for the decisions in §2 above.
 - `README.md` — command table, contract wording, ALDC credit with a link to the notices file.
 - `docs/PROFILE.md` — `specs.dir` also receives design documents.
+- `docs/DESIGN.md` §7 and `README.md` — "eleven themes" becomes twelve.
+
+### 3.10 Baseline knowledge the design stage depends on
+
+Several decision areas in §3.3 had nothing behind them in the shipped baseline: `api.md` covers
+only inbound API pages, and nothing covered background work or locking. A design stage that
+recommends from memory is the failure bp-al exists to prevent, so this work adds:
+
+**`skills/al-conventions/references/integration.md`** — a twelfth theme, in the same
+checklist-with-reason style, with a row in the `al-conventions` index (which stays within its
+60-line budget). Sections:
+
+- *Outbound HTTP* — `HttpClient`, timeouts, never inside a posting transaction or a
+  subscriber, retry through a queue rather than a loop, idempotency keys, and the
+  per-extension "allow HTTP requests" setting that silently blocks calls in sandboxes.
+- *Secrets* — `SecretText` end to end, `IsolatedStorage` with the right `DataScope`,
+  `keyVaultUrls` for app-level secrets, never a table field, never telemetry.
+- *Authentication* — OAuth 2.0 through the platform's OAuth2 support; no stored passwords.
+- *Background work* — Job Queue (category for serialisation, attempts, error visibility on
+  the entry), `TaskScheduler.CreateTask` with a failure codeunit, `StartSession` for bounded
+  fire-and-forget only, and which of them survive a failed session.
+- *Events out of BC* — external business events, webhooks on API entities, Dataverse and
+  virtual tables, Power Automate — and when each fits.
+- *What does not belong in AL* — work the SaaS sandbox forbids (file system, .NET) or that
+  does not fit a session's limits goes to an Azure component; the extension calls it and owns
+  the retry.
+
+**`skills/al-conventions/references/performance.md`** — one new section, *Locking and read
+isolation*: `ReadIsolation` per record instance, why `LockTable` early serialises users,
+`DataAccessIntent = ReadOnly` so reports, queries and read-only API pages use the read replica,
+and that `ModifyAll`/`DeleteAll` fall back to per-row when table-event subscribers or the
+change log are active.
+
+Every platform fact in both is verified against Microsoft Learn before it is written, as the
+correctness pass (commit `0e353b8`) was, and names the runtime or BC version it depends on
+where it has one.
 
 ## 4. Error handling and degraded modes
 
@@ -292,5 +333,6 @@ supersedes the design (§3.2 step 8) or amends the spec.
 ## 6. Out of scope
 
 Review-stage conformance to TD-n · a design subagent · C4 generation · editing
-`ARCHITECTURE.md` / `DECISIONS.md` · profile schema changes · adding `IsHandled` or interface
-guidance to `al-conventions/references/events.md` (noted as a gap; a separate change).
+`ARCHITECTURE.md` / `DECISIONS.md` · profile schema changes · DevOps detection (AL-Go,
+BcContainerHelper, rulesets, symbol sources) and the AppSource-readiness additions from the
+whole-plugin review — each its own spec.
