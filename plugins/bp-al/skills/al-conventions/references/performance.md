@@ -92,6 +92,31 @@ work, the something is wrong.
 only where the semantics allow it. They do not fire `OnModify`/`OnDelete` triggers by default,
 so check that nothing depends on those before converting a loop.
 
+## Locking and read isolation
+
+A lock taken early is held until the transaction ends, and every user who needs the same rows
+waits for all of it.
+
+- **Do not call `LockTable` at the start of a routine** "to be safe". It heightens the isolation
+  of every later read of that table in the transaction, serialising everyone behind you, and it
+  switches off the optimistic reads described below.
+- **Lock only the rows you will change, just before you change them** — `FindSet(true)` for a
+  loop, or `ReadIsolation := IsolationLevel::UpdLock` on the record instance before a `Get`. A
+  plain read takes no update lock, so a `Get` followed by `Modify` relies on optimistic
+  concurrency and can fail with "another user has modified the record" under load.
+- **`ReadIsolation` (runtime 11.0 and later) applies to one record variable.** It overrides the
+  transaction's isolation for that instance only, which is the point: one read's needs do not
+  leak into the rest of the transaction.
+- **Reads after a write are optimistic by default.** Tri-state locking — always on in current
+  versions, online and on-premises — reads committed data after a write instead of taking
+  update locks, which is what keeps posting concurrent. `LockTable` reverts that table to the
+  old, locking behaviour, so it costs more than it used to.
+- **`DataAccessIntent = ReadOnly`** routes a report's data-item reads, an API page's fetch or an
+  API query's fetch to a read-only replica when one is available, off the primary database
+  everyone is writing to. On a page it applies only to API pages with `Editable = false`, and on
+  a query only when it is called through OData. It is a hint, not a guarantee, and any write
+  attempted on the replica throws.
+
 ## Keep work out of per-row triggers
 
 `OnAfterGetRecord` runs once per visible row, again on every scroll and every refresh. A
