@@ -19,6 +19,18 @@ this stage exists to avoid.
 
 If the profile is absent, run `bp-al:al-profile` first.
 
+### An approved design binds this spec
+
+If an approved design exists for this request — its path given to you, or approved earlier in
+this conversation — read it before anything else. A design whose Status is `Proposed` or
+`Superseded` is a draft and binds nothing.
+
+- The spec **must not contradict any `TD-n`**. OBJECTS and CRITERIA cite the decision they
+  implement: `per TD-2`.
+- If the spec needs to depart from a decision, stop and put the conflict in `OPEN`. The human
+  either supersedes the design with `/bp-al:design` or changes the spec. You do not choose.
+- The design's `UNVERIFIED` entries carry into `OPEN` unless you resolved them here.
+
 ## Locate before you specify
 
 Find the objects the request concerns before describing a change to them. Grep for the
