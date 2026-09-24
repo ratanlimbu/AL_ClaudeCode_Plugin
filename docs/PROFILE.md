@@ -74,7 +74,7 @@ shape.
 | `tests.runCommand` | string \| null | How to run the test suite. Detected from the VS Code tasks, an AL Test Runner setting or a root script, and **confirmed by a human** exactly as `build.command` is. `null` when the tests only run in CI, or at all. |
 | `authority[]` | string[] | Paths to the documents that decide things here, **in precedence order**, most authoritative first. Paths only — content is read on demand by the stage that needs it. |
 | `specs.mode` | `"file"` \| `"inline"` | Whether stage 1 writes a spec document or keeps the contract in the conversation. |
-| `specs.dir` | string \| null | Where spec documents go. **Only a directory that already exists** — the plugin never creates one. |
+| `specs.dir` | string \| null | Where spec documents go. **Only a directory that already exists** — the plugin never creates one. Design documents from `/bp-al:design` go here too. |
 | `hotspots[]` | glob[] | Areas where any change is flagged for human review regardless of correctness. |
 | `forbidden[]` | `{pattern, why}[]` | Regex patterns banned **in this project**, each with its reason. The reason is reported with the finding. |
 | `appsource.target` | `"appsource"` \| `"pte"` \| null | Which cop's rules this app is held to. `null` means undetermined, not "not AppSource". |
@@ -196,7 +196,7 @@ dependency on a non-Microsoft app · more than 100 `.al` files. Otherwise `custo
 | Contract | inline in the conversation | written to `specs.dir` |
 | Implementation | directly in the main context | bounded `al-implementer` subagent |
 | Review | a pass in the same context | `al-reviewer` in a fresh context |
-| Files written | the code only | the code, plus the spec |
+| Files written | the code only | the code, plus the spec and any design |
 
 Override for one run with `--quick` (force `customisation`) or `--deep` (force `product`).
 

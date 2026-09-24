@@ -2,7 +2,8 @@
 
 A Claude Code plugin for Microsoft Dynamics 365 Business Central AL development.
 
-`spec → implement → review`, command-driven, with a human gate between each stage — and the
+`spec → implement → review` — with an optional design stage in front for the changes that need
+one — command-driven, with a human gate between each stage — and the
 constraint everything else is downstream of: **it is safe to add to a repository that is
 already halfway through its life.**
 
@@ -26,7 +27,7 @@ mid-project.
    create. The change you asked for is the one exception, and the approved spec bounds it: stage
    2 edits only the files that spec names — which may include `app.json` or the document where
    your project records claimed object IDs.
-4. Spec documents are written **only where your profile already points**, and only on the
+4. Spec and design documents are written **only where your profile already points**, and only on the
    `product` tier.
 5. What cannot be determined is recorded as `null`, and the affected stage degrades **loudly**
    — reporting `UNVERIFIED` — rather than guessing.
@@ -39,6 +40,7 @@ documentation at all.
 
 | Command | What it does |
 |---|---|
+| `/bp-al:design <request>` | Stage 0 — design a HIGH-complexity change before any spec. `go` runs it only when triage says HIGH. |
 | `/bp-al:scan` | Profile the repository, write or refresh `.claude/bp-al.json`, report findings and gaps. Idempotent. |
 | `/bp-al:spec <request>` | Stage 1 — turn a request into a contract with checkable acceptance criteria. |
 | `/bp-al:implement [spec]` | Stage 2 — write the AL, run **your** build command, iterate to clean. |
@@ -99,7 +101,7 @@ exactly the projects that need it most.
 ## What it costs
 
 **Nothing when idle.** No always-on rules, no per-turn hooks, no injected context. The profile
-is read once per run by the stage that needs it; the quality baseline is eleven reference files
+is read once per run by the stage that needs it; the quality baseline is twelve reference files
 behind an index, and a stage loads only the theme its change touches.
 
 Subagent definitions **pin no model**, so a colleague on a smaller model stays on it and
@@ -142,3 +144,6 @@ and `/bp-al:scan` never loosens it back.
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE).
+
+The design stage is adapted from ALDC's `al-architect` (MIT); see
+[`THIRD-PARTY-NOTICES.md`](plugins/bp-al/THIRD-PARTY-NOTICES.md).
