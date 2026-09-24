@@ -1,6 +1,6 @@
 ---
 name: al-conventions
-description: The AL quality baseline — platform-level Business Central practice for performance, warning discipline, correctness, extension-model judgement, testing, events, APIs, upgrade, permissions, pages and telemetry. An index of eleven themes, each loaded only when the work touches it.
+description: The AL quality baseline — platform-level Business Central practice for performance, warning discipline, correctness, extension-model judgement, testing, events, APIs, integration, upgrade, permissions, pages and telemetry. An index of twelve themes, each loaded only when the work touches it.
 version: 0.1.0
 allowed-tools: Read
 ---
@@ -28,13 +28,14 @@ is a hazard in exactly the projects that need it most.
 | **testing** | the change adds or edits a test, or you are deciding what a test would have to assert to be worth writing | `references/testing.md` |
 | **events** | the change publishes an event, subscribes to one, or puts logic inside a subscriber | `references/events.md` |
 | **api** | the change adds or alters an API page, a bound action, or anything else a caller outside Business Central reaches | `references/api.md` |
+| **integration** | the change calls out of Business Central, stores or uses a secret, authenticates to anything, or moves work into the background (Job Queue, task, session) | `references/integration.md` |
 | **upgrade** | the change obsoletes anything, alters persisted shape on an app that has already shipped, or touches an install or upgrade codeunit | `references/upgrade.md` |
 | **permissions** | the change adds any object, or you are designing or extending a permission set | `references/permissions.md` |
 | **pages** | the change adds or extends a page, an action or a control, or puts logic in a page trigger | `references/pages.md` |
 | **telemetry** | the change adds an error path worth diagnosing in production, or you are deciding what signal to emit | `references/telemetry.md` |
 
 **Read one. Read two if the change genuinely spans them. Never read the set** — the index
-exists so their bodies stay out of context until a branch reaches for one. Eleven themes is a
+exists so their bodies stay out of context until a branch reaches for one. Twelve themes is a
 menu, not a reading list; a change that appears to need most of them is a change that should
 have been more than one change.
 
