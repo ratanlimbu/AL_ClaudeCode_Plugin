@@ -34,6 +34,12 @@ structural lint in `tests/lint.mjs`, which gains two checks.
 - Existing fixture `.al` files are CRLF and must stay so; do not touch them.
 - Prose style matches the existing references: short sections, each rule with its reason.
 - Code signing is **out of scope** (user decision, 2026-09-24).
+- **Symbol lookups must work on any OS the AL extension runs on.** The primary method is POSIX
+  (`od`, `tail`, `unzip`) plus a structured parse in Node or Python, whichever exists;
+  PowerShell is the Windows fallback. A text-only search is a last resort and its result is
+  reported as *owner unconfirmed*. (Both parse scripts in Task 5 were run against a real Base
+  Application package on 2026-09-24: Node 0.7 s, Python 4 s, same result.)
+- `SymbolReference.json` begins with a UTF-8 **BOM**; every parse strips it.
 
 ## Review Focus
 
@@ -46,9 +52,10 @@ structural lint in `tests/lint.mjs`, which gains two checks.
    (Task 6) and Test 6 variant (Task 10).
 3. **A design file for the slug already exists** — never overwritten silently. Pinned by
    Test 6 step 4 (Task 10).
-4. **An event published by a non-Microsoft dependency** — looked up in that dependency's
-   package (`<Publisher>_<Name>_<version>.app`) or its `sourcePath`. Pinned in `symbols.md`
-   (Task 5) and Test 8 (Task 10).
+4. **An event name that exists on more than one object, or an event published by a
+   non-Microsoft dependency** — the lookup must name the owning object, from a structured
+   parse, and look in that dependency's package (`<Publisher>_<Name>_<version>.app`) or its
+   `sourcePath`. Pinned in `symbols.md` (Task 5) and Test 8 step 2 (Task 10).
 5. **A request that turns out to have fewer than three genuine decisions** — re-triaged to
    MEDIUM, never padded. Pinned by Test 7 case 4 (Task 10).
 
@@ -84,7 +91,9 @@ structural lint in `tests/lint.mjs`, which gains two checks.
 
 **Interfaces:**
 - Produces: check 8 fails when a `skills/<s>/references/<f>.md` exists but is named neither in
-  `skills/<s>/SKILL.md` nor in any `commands/*.md`, or when a `SKILL.md` names
+  `skills/<s>/SKILL.md` (as `references/<f>.md`) nor in any `commands/*.md` (by its full path
+  `skills/<s>/references/<f>.md`, so one skill's file cannot be satisfied by another's), or
+  when a `SKILL.md` names
   `references/<f>.md` that does not exist. Check 9 fails when any file under `plugins/`
   mentions `ALDC` and `plugins/bp-al/THIRD-PARTY-NOTICES.md` is missing or lacks the MIT
   permission sentence or the upstream copyright holder.
@@ -121,7 +130,9 @@ for (const skill of knownSkills) {
 
   for (const f of present) {
     const named = `references/${f}`;
-    if (!skillText.includes(named) && !commandText.includes(named))
+    // A command names a reference by its full path, so `triage.md` in one skill can never be
+    // satisfied by a command that loads another skill's `triage.md`.
+    if (!skillText.includes(named) && !commandText.includes(`skills/${skill}/${named}`))
       fail("references", `skills/${skill}/${named} is named by neither its SKILL.md nor any command`);
   }
   for (const m of skillText.matchAll(/references\/([a-z0-9-]+\.md)/g)) {
@@ -224,7 +235,11 @@ Fetch each page and confirm the claim beside it. Drop any claim a page does not 
 | `TaskScheduler.CreateTask` parameters incl. failure codeunit | https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/taskscheduler/taskscheduler-createtask-method |
 | `StartSession` behaviour and limits | https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/session/session-startsession-method |
 | Job Queue category serialisation, maximum attempts | https://learn.microsoft.com/en-us/dynamics365/business-central/admin-job-queues-schedule-tasks |
-| External business events attribute and consumers | search Learn: "Business Central external business events ExternalBusinessEvent attribute" |
+| External business events: `[ExternalBusinessEvent]` arguments, the event **category** enum extension, required permissions | search Learn: "Business Central external business events ExternalBusinessEvent attribute" |
+| Business Central online has **no fixed outbound IP**; service tags are the mechanism | search Learn: "Business Central online outbound IP addresses service tag" |
+| System Application **Azure Functions** module (codeunit and authentication) | search Learn: "Business Central Azure Functions module system application" |
+| Webhook subscriptions on API pages, and which pages support them | search Learn: "Business Central webhooks API subscriptions supported entities" |
+| Business Central virtual tables in Dataverse | search Learn: "Business Central virtual tables Dataverse" |
 
 - [ ] **Step 4: Create `references/integration.md`** with this content (amend any sentence
   Step 3 did not confirm):
@@ -306,7 +321,24 @@ who schedules it in production is a permissions defect — see `permissions`.
 | Business Central reads Dataverse data | Dataverse integration tables and coupling |
 
 An external business event is a published contract, like an API version: its name and payload
-are frozen once someone has built a flow on it.
+are frozen once someone has built a flow on it. It is declared with `[ExternalBusinessEvent]`,
+belongs to an event **category** — an enum extension your app adds — and states the permissions
+a subscriber needs. Design the category and the payload together; both are part of the
+contract.
+
+## There is no IP address to whitelist
+
+Business Central online does not call out from a fixed IP address. A partner or customer who
+asks for "Business Central's IP" to open a firewall is asking for something that does not
+exist; the answer is Azure service tags or, better, authentication that does not depend on
+where the call came from. Settle it at design time — discovering it at go-live stops the
+project.
+
+## Calling Azure Functions
+
+The System Application has an Azure Functions module that handles the request and its
+authentication. Use it rather than hand-building the `HttpClient` call; it is the supported
+path, and it keeps the credential handling in one place.
 
 ## What does not belong in AL at all
 
@@ -350,6 +382,8 @@ git commit -m "feat: add the integration theme — outbound HTTP, secrets, OAuth
 | `Record.ReadIsolation` values and per-instance scope | https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/record/record-readisolation-method |
 | `DataAccessIntent = ReadOnly` on reports, queries, API pages → read replica | https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/properties/devenv-dataaccessintent-property |
 | `ModifyAll`/`DeleteAll` run per row when `RunTrigger` is true or subscribers exist | https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/record/record-modifyall-method |
+| `Get` takes no update lock; `IsolationLevel::UpdLock` does | the `ReadIsolation` page above, and search Learn: "Business Central Get method locking" |
+| Tri-state locking (online): default isolation of reads after a write in the same transaction | search Learn: "Business Central tri-state locking" |
 
 - [ ] **Step 2: Insert the section** (amend what Step 1 did not confirm):
 
@@ -360,8 +394,14 @@ A lock taken early is held until the transaction ends, and every user who needs 
 waits for all of it.
 
 - **Do not call `LockTable` at the start of a routine** "to be safe". It serialises everyone
-  behind you for the whole transaction. Take write locks by reading with `FindSet(true)` or
-  `Get` just before the modify that needs them.
+  behind you for the whole transaction. Take the lock on the rows you will change, just before
+  you change them: `FindSet(true)` for a loop, or `ReadIsolation := IsolationLevel::UpdLock` on
+  the record before a `Get`. **A plain `Get` takes no lock** — a `Get` followed by `Modify`
+  relies on optimistic concurrency and fails with "another user has modified the record" under
+  load.
+- **Online, reads after a write are stricter by default.** Tri-state locking makes a read that
+  follows a write in the same transaction take locks it would not take before the write. Code
+  that reads widely after its first modify holds more than it appears to.
 - **Set `ReadIsolation` on the record instance** when a read must see committed data only, or
   must lock what it reads for an update that follows. It applies to that variable alone, which
   is the point — one read's needs do not leak into the rest of the transaction.
@@ -488,17 +528,28 @@ The human confirms or overrides, in either direction, and their call stands.
 
 - **Posting.** Logic inside a posting routine's transaction — a subscriber on a posting
   codeunit — or a new ledger or entry table.
-- **Document → posted document transfer.** A field added to a document and to its posted
-  counterpart (header → posted header, line → posted line). `TransferFields` matches fields by
-  **number**, so the numbers must agree on every table in the chain, and once shipped they
-  cannot change.
+- **Document → posted document transfer.** A field added to a document that must survive into
+  its posted or archived forms — posted shipment, invoice, credit memo, return receipt, and the
+  **archive** tables. `TransferFields` matches fields by **number**, and the types must be
+  compatible, so number and type must agree on every table in the chain; once shipped they
+  cannot change. A table missed in the chain drops the value silently — the archive is the one
+  usually missed. A value meant to reach the ledger travels by event through the journal line,
+  not by `TransferFields`, and is part of the posting signal above.
 - **A new document type, number series, or dimension handling.**
+- **A property that cannot change after release** — `DataPerCompany` on a new table; an
+  enum's `Extensible` (true → false breaks every extension of it).
+- **Fields added to a high-volume base table** — G/L Entry, Item Ledger Entry, Value Entry and
+  their like. Every read of that table, including the base application's own posting, pays the
+  join to your companion table unless it limits its loaded fields.
 - **A breaking or migrating change to stored data on an app that has shipped** — a field's type
   or length, a primary key, a removal or obsoletion, data moving between fields or tables,
   anything that needs upgrade code or `DataTransfer`. A purely additive field is **not** HIGH.
-- **Public surface** — a new public procedure, event, API page or interface on an app whose
-  profile `appsource.target` is `appsource`, or whose objects another app consumes through a
-  dependency or `internalsVisibleTo`.
+- **Public surface that cannot be taken back** — a new event publisher, API page, interface,
+  or extensible enum, or a public procedure on a codeunit other apps are known to call — on an
+  app whose profile `appsource.target` is `appsource`, or that another app depends on or reaches
+  through `internalsVisibleTo`. When `appsource.target` is `null` and the app has dependents,
+  treat it as `appsource`. An ordinary new public procedure on a codeunit nothing outside calls
+  is **not** HIGH; if it were, every AppSource change would be.
 - **Background execution or concurrency** — Job Queue, `TaskScheduler`, `StartSession`, or
   explicit locking. A page background task is read-only and is not a HIGH signal.
 - **Integration outside Business Central** — any HTTP call, webhook, external business event,
@@ -507,8 +558,9 @@ The human confirms or overrides, in either direction, and their call stands.
 
 ## MEDIUM
 
-No HIGH signal, but the change touches more than one object type or functional area, **or it
-touches any `hotspots` glob in the profile** — a hotspot is at least MEDIUM, never LOW.
+No HIGH signal, but the change spans more than one functional area (sales and warehouse, not
+a table extension and its page extension), **or it touches any `hotspots` glob in the
+profile** — a hotspot is at least MEDIUM, never LOW.
 
 ## LOW
 
@@ -541,16 +593,27 @@ the `al-conventions` index's "one or two". A design that needs more than four th
 split into sub-specs, not read in full.
 
 Every platform fact below depends on the runtime and BC version. Check it against the
-`runtime` and `application` read from `app.json` before recommending it.
+`runtime` and `application` read from `app.json` before recommending it. If a Microsoft Learn
+MCP server is configured (see `/bp-al:mcp`), cite the page a version-sensitive recommendation
+rests on; if not, mark the recommendation *version not checked* rather than asserting it.
 
 ## Data model — `extension-model`, `performance`
 
 Decide: new table or table extension; keys for the filters the feature will actually run;
 FlowField or stored value (FlowFields that reference each other circularly do not compile);
-relations. **For a document → posted document chain, the field numbers must match on every
-table `TransferFields` copies between** — decide them here, together.
+relations; `DataPerCompany` on a new table.
 
-Expensive to reverse because a shipped field's number and type are permanent.
+- **Document chains.** For a field that must survive posting or archiving, list every table in
+  the chain — document, posted shipment, invoice, credit memo, return receipt, archive — and fix
+  one field number and a compatible type for all of them here, together. `TransferFields`
+  copies by number.
+- **High-volume base tables.** A table extension on G/L Entry, Item Ledger Entry or Value Entry
+  adds a join to every read of that table that does not limit its fields, Microsoft's own
+  included. Prefer a separate table keyed to the entry when the data is not needed on every
+  read.
+
+Expensive to reverse because a shipped field's number and type, and a table's
+`DataPerCompany`, are permanent.
 
 ## Transactions and locking — `performance`, `correctness`
 
@@ -628,8 +691,11 @@ Decide: which parts can be specified and built independently — the data model 
 disjoint sets of files — and whether one spec would be too large.
 ```
 
-- [ ] **Step 3: Create `symbols.md`** (the method below was verified against a real Base
-  Application package on 2026-09-24):
+- [ ] **Step 3: Create `symbols.md`** (the header read, the POSIX extraction, the PowerShell
+  extraction and both parse scripts below were each run against a real Base Application
+  package on 2026-09-24; the Node and Python scripts both returned
+  `Codeunits · Sales-Post · OnAfterPostSalesDoc · IntegrationEvent(False, False)` and found the
+  `Obsolete(…, 27.0)` attribute on a withdrawn method):
 
 ````markdown
 # Verifying a base or dependency symbol
@@ -662,14 +728,34 @@ dependency's `version` for others — because that is the version the app promis
 Check **obsolescence** against the highest version present, because that is where a withdrawal
 shows first. Say which versions you used.
 
+**A Base Application package is one country version.** `.alpackages` holds W1 or a single
+localisation, and the file name does not say which. An event verified there may be absent from
+another country's base application. When `appsource.target` is `appsource`, report the result
+as *verified for one localisation* — Microsoft validates the app against every country it is
+offered in.
+
 ## Reading a package
 
 An `.app` is a `NAVX` header followed by a zip archive. The header length is the unsigned
-32-bit integer at byte offset 4; the zip starts there. `SymbolReference.json` is a plain entry
-in that zip.
+32-bit integer at byte offset 4 (40 in every package seen so far — read it, do not assume it);
+the zip starts there. `SymbolReference.json` is a plain entry in that zip.
 
 Extract that one entry to a temporary directory **outside the repository** — the scratchpad,
-or the system temp directory — never beside the code:
+or the system temp directory — never beside the code.
+
+**Any system with `od`, `tail` and `unzip`** (Git Bash on Windows, macOS, Linux):
+
+```bash
+APP='<path to the .app>'
+OUT="${TMPDIR:-${TEMP:-/tmp}}/bp-al-symbols"; mkdir -p "$OUT"
+HDR=$(od -An -tu4 -j4 -N4 "$APP" | tr -d ' ')
+tail -c +$((HDR + 1)) "$APP" > "$OUT/pkg.zip"
+unzip -p "$OUT/pkg.zip" SymbolReference.json > "$OUT/SymbolReference.json"
+rm "$OUT/pkg.zip"
+echo "$OUT/SymbolReference.json"
+```
+
+**Windows without those tools** — PowerShell:
 
 ```powershell
 $app = '<path to the .app>'
@@ -688,25 +774,80 @@ $s = $entry.Open(); $f = [System.IO.File]::Create($target); $s.CopyTo($f); $f.Cl
 $target
 ```
 
-## Searching it
+## Finding a symbol — parse, do not grep
 
-The file is a single line of JSON, tens of megabytes long. Search it as text; do not load it
-into a JSON parser or print it.
+The file is one line of JSON, tens of megabytes long, and it begins with a byte-order mark.
+**Never print it.** And do not confirm an event by reading text around a match: an object's own
+name comes *after* its whole method list, so for a large codeunit the owner is hundreds of
+thousands of characters from the event — and the same event name can exist on several objects.
+Parse it, and walk `Namespaces` → object lists → `Methods`.
 
-- **An event** appears as a method whose `Attributes` include `IntegrationEvent`,
-  `BusinessEvent` or `InternalEvent`, followed by `"Name":"<EventName>"`. Search for
-  `"Name":"<EventName>"` and read a few hundred characters either side to confirm the
-  attribute and the owning object.
-- **An obsolete method** carries an attribute `{"Name":"Obsolete","Arguments":[{reason},{tag}]}`.
-- **An obsolete object or field** carries `ObsoleteState` in its `Properties`, with
-  `ObsoleteReason` and `ObsoleteTag` beside it.
-- **A removed method** is simply absent — not found in the floor version means it cannot be
-  used.
+Write this to the temporary directory and run it with Node (`node find.js <json> <Name>`):
 
-**`ObsoleteState` Pending, or an `Obsolete` attribute, is a finding** — present it as a
-decision with alternatives, never as a pass.
+```js
+const [file, name] = process.argv.slice(2);
+const d = JSON.parse(require("fs").readFileSync(file, "utf8").replace(/^﻿/, ""));
+const kinds = ["Tables", "Codeunits", "Pages", "Reports", "Queries", "XmlPorts"];
+const args = (a) => a.Name + "(" + (a.Arguments || []).map((x) => x.Value).join(", ") + ")";
+(function walk(n) {
+  for (const k of kinds)
+    for (const o of n[k] || [])
+      for (const m of o.Methods || [])
+        if (m.Name === name) {
+          const objObsolete = (o.Properties || []).filter((p) => /^Obsolete/.test(p.Name))
+            .map((p) => p.Name + "=" + p.Value);
+          console.log([k, o.Name, m.Name, (m.Attributes || []).map(args).join(" "),
+            objObsolete.join(" ") || "-"].join("\t"));
+        }
+  for (const c of n.Namespaces || []) walk(c);
+})(d);
+```
 
-Delete the extracted file when the design is done.
+or, without Node, with Python (`python find.py <json> <Name>`):
+
+```python
+import json, re, sys
+path, name = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8-sig") as f:
+    root = json.load(f)
+KINDS = ["Tables", "Codeunits", "Pages", "Reports", "Queries", "XmlPorts"]
+def args(a):
+    return a["Name"] + "(" + ", ".join(str(x.get("Value")) for x in a.get("Arguments", [])) + ")"
+def walk(n):
+    for k in KINDS:
+        for o in n.get(k, []):
+            for m in o.get("Methods", []):
+                if m.get("Name") == name:
+                    obs = [p["Name"] + "=" + str(p["Value"]) for p in o.get("Properties", [])
+                           if re.match(r"Obsolete", p["Name"])]
+                    print("\t".join([k, o["Name"], m["Name"],
+                                     " ".join(args(a) for a in m.get("Attributes", [])),
+                                     " ".join(obs) or "-"]))
+    for c in n.get("Namespaces", []):
+        walk(c)
+walk(root)
+```
+
+Each output line is: object kind · **owning object** · method · its attributes · the object's
+obsolete properties. No output means not found.
+
+Reading the result:
+
+- **An event** has `IntegrationEvent(…)`, `BusinessEvent(…)` or `InternalEvent(…)` among its
+  attributes. More than one line means the name exists on several objects — use the one the
+  design means, and say which.
+- **An obsolete method** has `Obsolete(<reason>, <tag>)` among its attributes.
+- **An obsolete object** shows `ObsoleteState=Pending` (with reason and tag) in the last column.
+- **Not found in the floor version** means it cannot be used, whatever a later version has.
+
+**An `Obsolete` attribute or `ObsoleteState=Pending` is a finding** — present it as a decision
+with alternatives, never as a pass.
+
+**Neither Node nor Python available:** search the text for `"Name":"<Name>"` to establish that
+the name exists at all, and record the result as *found, owner unconfirmed*. That is weaker
+than verified, and the design says so.
+
+Delete the extracted files when the design is done.
 ````
 
 - [ ] **Step 4: Create `design-template.md`**
@@ -837,7 +978,8 @@ them. **No code, no object IDs, no signatures, no test plan** — those are the 
 ## 1. Triage
 
 Apply `references/triage.md` and state the result in one line. The human confirms or
-overrides.
+overrides. **When `/bp-al:go` has already stated and confirmed triage, do not repeat it** —
+start at section 2.
 
 - Invoked on a LOW or MEDIUM request: say so, recommend `/bp-al:spec`, and continue only if
   the human insists.
@@ -861,7 +1003,8 @@ half-built, commented out, or present and never called. A design for something t
 the most expensive kind to discover late.
 
 Verify every base or dependency **event, procedure and object** the design relies on, per
-`references/symbols.md`. Record hotspots hit.
+`references/symbols.md` — by structured parse, naming the owning object and the package
+version checked. Record hotspots hit.
 
 ## 4. Clarify
 
@@ -1008,8 +1151,10 @@ with:
    why in one line.
 3. **Triage** — unless `--quick` was given, read `skills/al-design/references/triage.md` (that
    file only, not the skill) and state the result in one line. The human may override it.
-   - **HIGH** → **Stage 0**: load `bp-al:al-design` and produce the design. **Gate: stop and
-     get human approval.** Then carry the approved design's path into Stage 1.
+   - **HIGH** → **Stage 0**: load `bp-al:al-design` and produce the design — triage is
+     already confirmed, so the skill does not repeat it. **Gate: stop and get human
+     approval.** Then carry the approved design into Stage 1: its path on the `product` tier,
+     or the inline design on `customisation`.
    - **LOW / MEDIUM** → straight to Stage 1.
 4. **Stage 1** — load `bp-al:al-spec` and produce the contract, bound by the approved design
    if there is one. **Gate: stop and get human approval.** Do not proceed on silence or on an
@@ -1091,7 +1236,11 @@ git commit -m "feat: al-spec honours and cites an approved design" -m "Co-Author
 - §7: `held as eleven reference files` → `held as twelve reference files`; after the line
   listing `testing · events · api · upgrade · permissions · pages · telemetry`, change it to
   `testing · events · api · integration · upgrade · permissions · pages · telemetry`, and change
-  `The other seven were added afterwards` → `The other eight were added afterwards`.
+  `The other seven were added afterwards, and every one covers a class of defect that ships
+  green:` → `The other eight were added afterwards, and every one covers a class of defect that
+  ships green:`. The sentence then lists one defect per theme; insert, after `an API field
+  renamed by a cosmetic edit,`, the clause `an outbound call made inside a posting transaction,`
+  so `integration` has its own example and the count matches the list.
 - §9: before `### Stage 1 — spec`, insert:
 
 ```markdown
@@ -1205,13 +1354,16 @@ On `tiny-pte`, via `/bp-al:go`, stopping at the first gate each time:
 ## Test 8 — symbol verification picks the right package
 
 Needs a session on a machine with real symbol packages. In a scratch copy of
-`multi-app-product`, create `app/.alpackages/` and copy in **two** Base Application packages of
-different versions whose majors are at or above the app's `application` floor.
+`multi-app-product` **outside this repository** (as in Setup), create `app/.alpackages/` and
+copy in **two** Base Application packages of different versions whose majors are at or above
+the app's `application` floor.
 
 1. Run `/bp-al:design` with a request that subscribes to a sales-posting event that exists in
    both.
-2. The design's **Symbols verified** table must name the event, the **lower** package as the
-   floor version checked and the **higher** as the obsolescence check.
+2. The design's **Symbols verified** table must name the event, **its owning codeunit** (from a
+   structured parse, not a text match), the **lower** package as the floor version checked and
+   the **higher** as the obsolescence check. If neither Node nor Python is installed, the entry
+   must read *found, owner unconfirmed* instead.
 3. Repeat with a request that relies on a method carrying an `Obsolete` attribute in the higher
    package → it must appear as a decision with alternatives, not a pass.
 4. Remove `.alpackages/` and repeat step 1 → the event is listed under `UNVERIFIED`, with the
