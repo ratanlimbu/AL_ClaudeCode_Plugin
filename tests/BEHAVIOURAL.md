@@ -125,3 +125,55 @@ nobody is reading carefully.
 
 The one thing it may say: if the category vocabulary has grown since the profile was written,
 it names the categories that sit in neither list and asks where they go.
+
+## Test 6 — the design footprint
+
+On `multi-app-product` (`product` tier, `specs.dir: docs/specs`), after `/bp-al:scan`:
+
+1. Run `/bp-al:design add a field to sales orders that flows to posted sales invoices and is
+   sent to an external service on posting`.
+2. Triage must say **HIGH** and name a signal (document → posted document transfer, or
+   external integration). Approve the design and the slug.
+3. `git status --porcelain` must show `.claude/` and exactly one new file,
+   `docs/specs/<slug>.design.md`, and nothing else. The file has `**Status:** Approved`, at
+   least three `### TD-` headings, and no 5–8 digit number. No `SymbolReference.json` anywhere
+   in the tree.
+4. Run the same command again with the same slug. It must **not** overwrite the file: it shows
+   what differs and asks, or offers `<slug>.design.v2.md`.
+5. Variant: delete `docs/specs` and repeat. The design must come back **inline**, with a line
+   saying the directory no longer exists; `docs/specs` must **not** be recreated.
+
+On `tiny-pte` (`customisation`), the same request: inline design, `--deep` recommended exactly
+once, `git status --porcelain` shows only `.claude/`.
+
+## Test 7 — triage routes
+
+On `tiny-pte`, via `/bp-al:go`, stopping at the first gate each time:
+
+1. `add a description field to the bin helper` → **LOW**, no design stage.
+2. Add `"**/src/**"` to `hotspots` in `.claude/bp-al.json` by hand, then repeat case 1 →
+   **MEDIUM** (hotspot), no design stage.
+3. `add the same field to sales orders and posted sales invoices` → **HIGH**, naming the
+   `TransferFields` signal; the design gate appears before any spec.
+4. Run `/bp-al:design` with a request triaged HIGH on a weak signal, answer so that only one
+   decision is genuine → the stage must say it was not HIGH and hand to `/bp-al:spec`, with no
+   padded TD entries.
+
+## Test 8 — symbol verification picks the right package
+
+Needs a session on a machine with real symbol packages. In a scratch copy of
+`multi-app-product` **outside this repository** (as in Setup), create `app/.alpackages/` and
+copy in **two** Base Application packages of different versions whose majors are at or above
+the app's `application` floor.
+
+1. Run `/bp-al:design` with a request that subscribes to a sales-posting event that exists in
+   both.
+2. The design's **Symbols verified** table must name the event, **its owning codeunit** (from a
+   structured parse, not a text match), the **lower** package as the floor version checked and
+   the **higher** as the obsolescence check. If neither Node nor Python is installed, the entry
+   must read *found, owner unconfirmed* instead.
+3. Repeat with a request that relies on a method carrying an `Obsolete` attribute in the higher
+   package → it must appear as a decision with alternatives, not a pass.
+4. Remove `.alpackages/` and repeat step 1 → the event is listed under `UNVERIFIED`, with the
+   reason and a single mention of `/bp-al:mcp`.
+5. `git status --porcelain` shows no extracted file inside the repository at any point.
