@@ -4,7 +4,7 @@ argument-hint: "<what you want built or changed> [--quick|--deep]"
 allowed-tools: Skill, Read, Glob, Grep, Bash, Write, Edit, Agent, Task, AskUserQuestion
 ---
 
-Sequence the three stages. All behaviour lives in the stage skills; this command only orders
+Sequence the stages. All behaviour lives in the stage skills; this command only orders
 them and holds the gates, so the chained and standalone paths cannot drift apart.
 
 The request: `$ARGUMENTS`
@@ -14,11 +14,19 @@ The request: `$ARGUMENTS`
 2. Determine the run tier: the profile's `tier`, unless `--quick` (force `customisation`) or
    `--deep` (force `product`) appears in the arguments. State which tier you are running and
    why in one line.
-3. **Stage 1** — load `bp-al:al-spec` and produce the contract. **Gate: stop and get human
-   approval.** Do not proceed on silence or on an implied yes.
-4. **Stage 2** — load `bp-al:al-implement`. **Gate: stop and get human approval** of the
+3. **Triage** — unless `--quick` was given, read `skills/al-design/references/triage.md` (that
+   file only, not the skill) and state the result in one line. The human may override it.
+   - **HIGH** → **Stage 0**: load `bp-al:al-design` and produce the design — triage is
+     already confirmed, so the skill does not repeat it. **Gate: stop and get human
+     approval.** Then carry the approved design into Stage 1: its path on the `product` tier,
+     or the inline design on `customisation`.
+   - **LOW / MEDIUM** → straight to Stage 1.
+4. **Stage 1** — load `bp-al:al-spec` and produce the contract, bound by the approved design
+   if there is one. **Gate: stop and get human approval.** Do not proceed on silence or on an
+   implied yes.
+5. **Stage 2** — load `bp-al:al-implement`. **Gate: stop and get human approval** of the
    diff, the build result and the warning delta.
-5. **Stage 3** — load `bp-al:al-review`. Report the verdict.
+6. **Stage 3** — load `bp-al:al-review`. Report the verdict.
 
 Every gate is a real stop. If a stage reports `BLOCKED` or `UNVERIFIED`, say which at the gate
 rather than carrying it forward silently — the next stage inherits it either way, and only the
