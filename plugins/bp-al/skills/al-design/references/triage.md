@@ -2,7 +2,8 @@
 
 State the result in one line, naming the signal that decided it:
 `TRIAGE  HIGH — document → posted document transfer (TransferFields field numbers)`.
-The human confirms or overrides, in either direction, and their call stands.
+The human confirms or overrides, in either direction, and their call stands — with one
+exception, below: a HIGH that turns out to hold fewer than three genuine decisions.
 
 ## HIGH — any one of these
 

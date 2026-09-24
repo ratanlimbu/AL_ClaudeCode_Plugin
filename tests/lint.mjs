@@ -389,6 +389,22 @@ for (const skill of knownSkills) {
   }
 }
 
+// A plain relative path in plugin text resolves against the user's working directory, not the
+// plugin. `${CLAUDE_PLUGIN_ROOT}` is documented as substituted in skill markdown only — not in
+// command markdown — so a command must reach a plugin file by loading a skill, and a skill must
+// reach another skill's file through the variable.
+for (const file of commandFiles) {
+  if (/skills\/[a-z0-9-]+\/references\//.test(readFileSync(file, "utf8")))
+    fail("references", `${rel(file)} names a plugin file by path — commands must load a skill instead`);
+}
+for (const skill of knownSkills) {
+  const text = readFileSync(join(PLUGIN, "skills", skill, "SKILL.md"), "utf8");
+  for (const m of text.matchAll(/(\S*)skills\/([a-z0-9-]+)\/references\//g)) {
+    if (m[2] !== skill && !m[1].endsWith("${CLAUDE_PLUGIN_ROOT}/"))
+      fail("references", `skills/${skill}/SKILL.md names skills/${m[2]}/references/ without \${CLAUDE_PLUGIN_ROOT}/`);
+  }
+}
+
 // ------------------------------------------------- 9. adapted content carries its licence
 //
 // MIT requires the copyright and permission notice in every copy or substantial portion. A

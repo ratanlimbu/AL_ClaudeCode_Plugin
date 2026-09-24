@@ -31,6 +31,10 @@ this conversation — read it before anything else. A design whose Status is `Pr
   either supersedes the design with `/bp-al:design` or changes the spec. You do not choose.
 - The design's `UNVERIFIED` entries carry into `OPEN` unless you resolved them here.
 
+If the design stage re-triaged the request to MEDIUM — fewer than three genuine decisions — there
+is no design to bind you. Take the decisions it made as `OPEN` entries with its recommendation
+as the proposed assumption; the human settles them at this gate.
+
 ## Locate before you specify
 
 Find the objects the request concerns before describing a change to them. Grep for the

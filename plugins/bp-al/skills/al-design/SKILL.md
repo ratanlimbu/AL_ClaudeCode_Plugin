@@ -12,14 +12,15 @@ them. **No code, no object IDs, no signatures, no test plan** — those are the 
 
 ## 1. Triage
 
-Apply `references/triage.md` and state the result in one line. The human confirms or
-overrides. **When `/bp-al:go` has already stated and confirmed triage, do not repeat it** —
-start at section 2.
+Apply `references/triage.md`, state the result in one line, and wait for the human to confirm
+or override it. **When `/bp-al:go` loaded you for triage, this section is all it asked for:**
+report the confirmed result and stop; `go` resumes you at section 2 if it is HIGH.
 
-- Invoked on a LOW or MEDIUM request: say so, recommend `/bp-al:spec`, and continue only if
-  the human insists.
-- **`customisation` tier and HIGH:** say once that an inline design ends with the
-  conversation, and recommend re-running with `--deep` so it is written to a file. Their call.
+- Invoked directly on a LOW or MEDIUM request: say so, recommend `/bp-al:spec`, and continue
+  only if the human insists.
+- **`customisation` tier and HIGH** — whether invoked directly or by `go`: say once that an
+  inline design ends with the conversation, and recommend re-running with `--deep` so it is
+  written to a file. Their call.
 
 ## 2. In
 
@@ -49,7 +50,8 @@ rules, volumes, integration direction and timing, compliance. One question at a 
 ## 5. Decide
 
 Work through `references/decision-areas.md`, **only the areas the design touches**. For each,
-read the `al-conventions` theme it names, then present options, trade-offs and a
+read the `al-conventions` theme it names — the file
+`${CLAUDE_PLUGIN_ROOT}/skills/al-conventions/references/<theme>.md` — then present options, trade-offs and a
 recommendation. One theme per touched area is allowed here; more than four themes means the
 work should be decomposed instead.
 

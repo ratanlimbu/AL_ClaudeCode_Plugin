@@ -54,8 +54,9 @@ firewall early — a request for "Business Central's IP address" has no answer.
 - Store it in `IsolatedStorage` with the narrowest `DataScope` that works: `Module` for the app
   as a whole, `Company`, `User`, or `CompanyAndUser` when it genuinely varies.
 - Carry it as `SecretText` (runtime 12.0 and later) from the moment it is read to the moment it
-  goes into the request. It is not visible in the debugger. `Unwrap()` turns it back into plain
-  text; it exists for compatibility, and every call to it is a place the secret can leak.
+  goes into the request — through the `SecretText` overloads, never through `Text`. It is not
+  visible in the debugger. `Unwrap()`, which turns it back into plain text, is supported **only
+  on-premises**: a Cloud design that needs the plain value has a design problem, not an API gap.
 - Credentials that belong to the publisher rather than the customer — an API key for your own
   service — belong in an Azure Key Vault listed in `keyVaultUrls`. In Business Central online
   that is supported for AppSource apps only.

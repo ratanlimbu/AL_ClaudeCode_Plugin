@@ -107,10 +107,12 @@ waits for all of it.
 - **`ReadIsolation` (runtime 11.0 and later) applies to one record variable.** It overrides the
   transaction's isolation for that instance only, which is the point: one read's needs do not
   leak into the rest of the transaction.
-- **Reads after a write are optimistic by default.** Tri-state locking — always on in current
-  versions, online and on-premises — reads committed data after a write instead of taking
-  update locks, which is what keeps posting concurrent. `LockTable` reverts that table to the
-  old, locking behaviour, so it costs more than it used to.
+- **Reads after a write are optimistic by default.** Tri-state locking reads committed data
+  after a write instead of taking update locks, which is what keeps posting concurrent.
+  `LockTable` reverts that table to the old, locking behaviour, so it costs more than it used
+  to. It is always on from version 26. In versions 23–25 an administrator can switch it off in
+  Feature Management, and on-premises also needs `EnableTriStateLocking` in the server
+  configuration — so on an app whose `application` floor is below 26, do not rely on it.
 - **`DataAccessIntent = ReadOnly`** routes a report's data-item reads, an API page's fetch or an
   API query's fetch to a read-only replica when one is available, off the primary database
   everyone is writing to. On a page it applies only to API pages with `Editable = false`, and on

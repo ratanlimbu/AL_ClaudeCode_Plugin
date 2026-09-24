@@ -75,5 +75,5 @@ in. For the human to paste; this stage never edits those documents. | none}
 ---
 
 Rules: no AL code; no object or ID tables; no procedure signatures; no phase or test lists.
-Fewer than three genuine technical decisions, or three genuine risks, means the request was
+Fewer than three genuine technical decisions means the request was
 not HIGH — re-triage, never pad.
