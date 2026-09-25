@@ -10,7 +10,8 @@ of — **safe to add to a repository that is already halfway through its life**.
 
 ## 1. Purpose
 
-Give an AL developer a repeatable `spec → implement → review` pipeline that:
+Give an AL developer a repeatable `spec → implement → review` pipeline, with an optional design
+stage in front of it for changes that carry expensive-to-reverse decisions, that:
 
 - works on any Business Central project, from a three-object per-tenant extension to a
   multi-app localisation product,
@@ -87,15 +88,21 @@ These ship in the README as guarantees. They are the reason the plugin is safe t
 a colleague mid-project.
 
 1. Its entire configuration footprint is one file: `.claude/bp-al.json`. The only other
-   things it ever writes are AL source you asked for and, on the `product` tier, the spec
-   documents described in guarantee 4.
+   things it ever writes are the change you asked for, the spec documents described in
+   guarantee 4 on the `product` tier, and `.mcp.json` — which only `/bp-al:mcp` writes, only on
+   an explicit yes, and never by merging over an entry you already had.
 2. It never creates a directory layout, and never moves or renames anything.
-3. It never edits `CLAUDE.md`, `README`, `app.json`, or any other file it did not create.
-4. Spec documents are written only where the profile already points, and only on the
+3. Its own tooling never edits `CLAUDE.md`, `README`, `app.json`, or any other file it did not
+   create. **The change you asked for is the one exception, and it is bounded by the approved
+   spec:** stage 2 edits only the files that spec names — which can include `app.json` (a
+   dependency, a feature flag, a version), the document where the project records claimed
+   object IDs, or a translation file the build regenerated. A file the spec does not name is
+   out of scope and reported as such.
+4. Spec and design documents are written only where the profile already points, and only on the
    `product` tier.
 5. What cannot be determined is recorded as `null`, and the affected stage degrades
    **loudly** — reporting `UNVERIFIED` — rather than guessing.
-6. Uninstalling is deleting one JSON file.
+6. Uninstalling is deleting one JSON file — two if you took the optional MCP setup.
 
 It must work on a repository that has uncommitted changes, a non-standard layout, several
 apps, or no documentation at all.
@@ -106,6 +113,7 @@ All commands are namespaced `/bp-al:`.
 
 | Command | Behaviour |
 |---|---|
+| `/bp-al:design <request>` | Stage 0 — for a HIGH-complexity request, the decisions that are expensive to reverse, with options and a recommendation. Optional; `go` runs it only when triage says HIGH. |
 | `/bp-al:scan` | Profile the repository, write or refresh `.claude/bp-al.json`, report findings and gaps. Idempotent. |
 | `/bp-al:spec <request>` | Stage 1 — turn a request into a contract. |
 | `/bp-al:implement [spec]` | Stage 2 — write AL, run the declared build command, iterate to clean. |
@@ -115,7 +123,7 @@ All commands are namespaced `/bp-al:`.
 | `/bp-al:appsource [app]` | AppSource submission readiness. Reports only; never gates, never writes. |
 | `/bp-al:mcp` | Offers optional MCP servers and writes `.mcp.json` on an explicit yes. |
 
-`go` only sequences the first three. All behaviour lives in the stage skills, so the
+`go` only sequences the stages and triages whether Stage 0 runs. All behaviour lives in the stage skills, so the
 chained and standalone paths cannot drift apart.
 
 `check` is the same principle applied again: it is `al-review` in a no-spec mode, not a second
@@ -130,8 +138,8 @@ Each step falls through to the next:
 
 - **Apps** — glob `**/app.json`, excluding `.alpackages`, `node_modules`, `.git`. Each match
   is an app. Read `name`, `publisher`, `id`, `idRanges`, `dependencies`, `internalsVisibleTo`.
-- **Test apps** — `"target": "Test"`, or a dependency on a Microsoft test library, or an app
-  name matching `*Test*`.
+- **Test apps** — a dependency on a Microsoft test library, or a `Subtype = Test` codeunit, or
+  an app name matching `*Test*`. (`app.json`'s `target` takes only `Cloud` and `OnPrem`.)
 - **Prefix / affix** — `AppSourceCop.json` `mandatoryPrefix` / `mandatoryAffixes`; otherwise
   the most common object-name prefix across `.al` files.
 - **Analyzers** — the `al.codeAnalyzers` entries in `.vscode/settings.json`, plus any
@@ -219,7 +227,7 @@ AppSource app publishes surface nothing in its own tree calls.
 
 This is what makes the plugin worth installing rather than just prompting well. It is
 platform-level knowledge — true on every Business Central project, independent of customer,
-publisher or domain — held as eleven reference files under `skills/al-conventions/references/`
+publisher or domain — held as twelve reference files under `skills/al-conventions/references/`
 and loaded **only** by the stage that needs the theme in question.
 
 A short index in `SKILL.md` names the themes so an agent knows when to reach for one. The
@@ -227,13 +235,14 @@ bodies never enter context unprompted, and the index is the one file here held t
 budget, because keeping them out is its entire job.
 
 `performance` · `warnings` · `correctness` · `extension-model` are the four the pipeline was
-built around. The other seven were added afterwards, and every one covers a class of defect
+built around. The other eight were added afterwards, and every one covers a class of defect
 that ships green: a suite that asserts less than it claims, a subscriber that rolls back its
-publisher, an API field renamed by a cosmetic edit, an upgrade that re-runs because nobody set
-the tag, a codeunit nobody but SUPER can execute, a field with no `ApplicationArea` that simply
-does not render, an incident with no signal because nobody emitted one in advance.
+publisher, an API field renamed by a cosmetic edit, an outbound call made inside a posting
+transaction, an upgrade that re-runs because nobody set the tag, a codeunit nobody but SUPER can
+execute, a field with no `ApplicationArea` that simply does not render, an incident with no
+signal because nobody emitted one in advance.
 
-`testing` · `events` · `api` · `upgrade` · `permissions` · `pages` · `telemetry`.
+`testing` · `events` · `api` · `integration` · `upgrade` · `permissions` · `pages` · `telemetry`.
 
 ### 7.1 Performance, by construction
 
@@ -304,6 +313,27 @@ beside the diff that satisfies it.
 `--quick` and `--deep` override the tier default for a single run.
 
 ## 9. Stage contracts
+
+### Stage 0 — design (optional)
+
+**When:** triage — `skills/al-design/references/triage.md` — says HIGH, or the human asks.
+HIGH means a BC-specific irreversibility signal: posting, document → posted document field
+transfer, a breaking or migrating change to shipped data, public surface, background
+execution, an external integration, or an app boundary.
+
+**In:** the request, the profile, the authority documents covering the area, and each touched
+app's `app.json` target and version fields.
+
+**Must:** verify every base or dependency symbol the design relies on — source, then symbol
+packages at the version the app targets, by structured parse — or report it `UNVERIFIED`;
+present options, trade-offs and a recommendation for each genuine decision; treat fewer than
+three genuine decisions as a mis-triage.
+
+**Out:** a design in the template's shape — decisions, risks, diagrams, constraints, verified
+symbols, and proposed authority entries for the human to paste. Never object IDs, signatures or
+tests.
+
+**Gate:** human approval. An approved design binds Stage 1.
 
 ### Stage 1 — spec
 
@@ -390,15 +420,17 @@ AL_ClaudeCode_Plugin/
 ├─ .claude-plugin/marketplace.json
 ├─ plugins/bp-al/
 │  ├─ .claude-plugin/plugin.json
-│  ├─ commands/   scan · spec · implement · review · go · check · appsource · mcp
+│  ├─ THIRD-PARTY-NOTICES.md   ALDC's MIT notice, for the adapted design stage
+│  ├─ commands/   scan · design · spec · implement · review · go · check · appsource · mcp
 │  ├─ agents/     al-implementer.md · al-reviewer.md      (no model pinned)
 │  └─ skills/
 │     ├─ al-profile/     detection and profile authoring
+│     ├─ al-design/      Stage 0 — triage, decision areas, symbols, template
 │     ├─ al-spec/ · al-implement/ · al-review/
 │     ├─ al-appsource/   submission readiness; reports only
 │     └─ al-conventions/ SKILL.md (index) + references/
 │        ├─ performance.md · warnings.md · correctness.md · extension-model.md
-│        ├─ testing.md · events.md · api.md · upgrade.md
+│        ├─ testing.md · events.md · api.md · integration.md · upgrade.md
 │        └─ permissions.md · pages.md · telemetry.md
 ├─ tests/
 │  ├─ fixtures/tiny-pte/ · fixtures/multi-app-product/   (each with expected-profile.json)
@@ -470,6 +502,11 @@ silently rewrite line endings are caught.
 | `appsource` | reports, never gates, never writes | Submission readiness is a list of decisions, several commercial. A command that edits `app.json` to satisfy a checklist has guessed at them. |
 | MCP symbol server | offered, never named | Pinning an npm package puts a supply-chain decision in someone's repository, running every session. |
 | Test execution | detected and confirmed like `build.command` | A stale test invocation reads as a broken suite. `null` stays legal, so CI-only repositories lose nothing. |
+| Design stage | optional Stage 0, triaged | Expensive decisions get presented as choices; small changes pay one line. |
+| Design form | a main-context skill, no agent | Design pauses for the human's trade-offs, which a subagent cannot do mid-run. |
+| Design binding | the spec only | Review already checks the spec; no new policy category. |
+| Symbol verification | source, then symbol packages at the targeted version, parsed | Base Application source is rarely on disk; its symbols usually are, and only a parse names the owning object. |
+| Adapted content | full MIT notice in THIRD-PARTY-NOTICES.md | A credit line is not the notice MIT requires. |
 
 ## 14. Confirmed at implementation — 2026-09-21
 

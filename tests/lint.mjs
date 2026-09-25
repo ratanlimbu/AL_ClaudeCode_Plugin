@@ -9,6 +9,8 @@
 //   5  no SKILL.md, agent or command exceeds its line budget
 //   6  nothing customer-specific ships — §3.1's guarantee, enforced rather than promised
 //   7  the golden-profile comparison actually detects a difference
+//   8  every reference file is reachable from its skill, and every one a skill names exists
+//   9  adapted third-party content ships with its licence notice
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, dirname, resolve, relative, sep } from "node:path";
@@ -354,6 +356,72 @@ for (const file of allFiles.filter((p) => p.endsWith("app.json"))) {
     delete removed.build.command;
     if (diffProfiles(removed, nulled).length === 0)
       fail("profile-diff", "an absent field compares equal to a null one");
+  }
+}
+
+// ------------------------------------------------- 8. reference files are reachable
+//
+// A reference body is loaded only when the SKILL.md that indexes it names it. One that nothing
+// names is dead weight nobody will ever read; one that is named but absent is a branch that
+// fails the moment it is reached. Commands count as namers, because `go` loads a single
+// reference (al-design's triage) without the skill.
+
+const commandText = commandFiles.map((f) => readFileSync(f, "utf8")).join("\n");
+
+for (const skill of knownSkills) {
+  const skillPath = join(PLUGIN, "skills", skill, "SKILL.md");
+  const skillText = readFileSync(skillPath, "utf8");
+  const refDir = join(PLUGIN, "skills", skill, "references");
+  const present = existsSync(refDir)
+    ? readdirSync(refDir).filter((f) => f.endsWith(".md"))
+    : [];
+
+  for (const f of present) {
+    const named = `references/${f}`;
+    // A command names a reference by its full path, so `triage.md` in one skill can never be
+    // satisfied by a command that loads another skill's `triage.md`.
+    if (!skillText.includes(named) && !commandText.includes(`skills/${skill}/${named}`))
+      fail("references", `skills/${skill}/${named} is named by neither its SKILL.md nor any command`);
+  }
+  for (const m of skillText.matchAll(/references\/([a-z0-9-]+\.md)/g)) {
+    if (!present.includes(m[1]))
+      fail("references", `skills/${skill}/SKILL.md names references/${m[1]}, which does not exist`);
+  }
+}
+
+// A plain relative path in plugin text resolves against the user's working directory, not the
+// plugin. `${CLAUDE_PLUGIN_ROOT}` is documented as substituted in skill markdown only — not in
+// command markdown — so a command must reach a plugin file by loading a skill, and a skill must
+// reach another skill's file through the variable.
+for (const file of commandFiles) {
+  if (/skills\/[a-z0-9-]+\/references\//.test(readFileSync(file, "utf8")))
+    fail("references", `${rel(file)} names a plugin file by path — commands must load a skill instead`);
+}
+for (const skill of knownSkills) {
+  const text = readFileSync(join(PLUGIN, "skills", skill, "SKILL.md"), "utf8");
+  for (const m of text.matchAll(/(\S*)skills\/([a-z0-9-]+)\/references\//g)) {
+    if (m[2] !== skill && !m[1].endsWith("${CLAUDE_PLUGIN_ROOT}/"))
+      fail("references", `skills/${skill}/SKILL.md names skills/${m[2]}/references/ without \${CLAUDE_PLUGIN_ROOT}/`);
+  }
+}
+
+// ------------------------------------------------- 9. adapted content carries its licence
+//
+// MIT requires the copyright and permission notice in every copy or substantial portion. A
+// credit line is not the notice. Anything under plugins/ that says it was adapted from ALDC
+// obliges the notices file to exist and to carry both halves.
+
+const NOTICES = join(PLUGIN, "THIRD-PARTY-NOTICES.md");
+const mentionsAldc = pluginMarkdown.some(([p, text]) => p !== NOTICES && /\bALDC\b/.test(text));
+if (mentionsAldc) {
+  if (!existsSync(NOTICES)) {
+    fail("notices", "plugins/ adapts ALDC content but plugins/bp-al/THIRD-PARTY-NOTICES.md is missing");
+  } else {
+    const n = readFileSync(NOTICES, "utf8");
+    if (!n.includes("Permission is hereby granted, free of charge"))
+      fail("notices", "THIRD-PARTY-NOTICES.md lacks the MIT permission notice");
+    if (!n.includes("Javier Armesto González"))
+      fail("notices", "THIRD-PARTY-NOTICES.md lacks the upstream copyright holder");
   }
 }
 

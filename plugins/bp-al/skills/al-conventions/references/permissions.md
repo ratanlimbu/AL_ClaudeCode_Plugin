@@ -84,12 +84,14 @@ inherent permissions still needs the `X` grant to be invoked at all.
 
 ## Test it, or it is untested
 
-Every test in the suite runs as SUPER by default: `TestPermissions = Disabled` is the default
-value, and it is why permission defects survive a green suite.
+A test codeunit set to `TestPermissions = Disabled` runs as SUPER, and it is why permission
+defects survive a green suite. The default, `Restrictive`, is stricter than it sounds: it starts
+at *D365 Full Access* and requires each test to lower its permissions — which is exactly the
+step that gets skipped by switching the codeunit to `Disabled`.
 
-If the change adds objects, at least one test runs `TestPermissions = Restrictive` against the
-permission set that ships with them. See the `testing` theme for what that setting does and
-what the other two values mean.
+If the change adds objects, at least one test lowers its permissions to exactly the permission
+set that ships with them, through `Library - Lower Permissions` or the *Permissions Mock*
+library. See the `testing` theme for all three values.
 
 That test is the only thing in the pipeline that exercises the production permission state.
 Without it, "the tests pass" is a claim about SUPER.

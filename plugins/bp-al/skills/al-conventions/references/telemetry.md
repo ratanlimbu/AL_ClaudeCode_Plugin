@@ -30,8 +30,9 @@ million of them. Anything you would want to group or filter by is a dimension, n
 
 ## Never put customer data in telemetry
 
-`DataClassification::SystemMetadata` is the only classification that belongs in a
-`LogMessage` you send to your own Application Insights.
+`DataClassification::SystemMetadata` is the only classification that is sent at all. The
+platform **drops** any `LogMessage` classified otherwise, for privacy — so a signal classified
+`CustomerContent` is not a leak, it is a signal that never arrives, and nothing tells you.
 
 No customer names, no contact details, no document numbers, no amounts, no free-text the user
 typed. If you need to correlate a signal back to a record, emit the `SystemId` — it identifies
@@ -93,7 +94,11 @@ continues it.
 
 ## Collecting errors instead of stopping at the first
 
-For a batch that processes many records, `ErrorBehavior::Collect` with `HasCollectedErrors` and
-`GetCollectedErrors` reports everything wrong in one pass. A batch that stops at the first
+For a batch that processes many records, `[ErrorBehavior(ErrorBehavior::Collect)]` with
+`HasCollectedErrors` and `GetCollectedErrors` reports everything wrong in one pass. **Only errors
+raised as collectible are collected** — `ErrorInfo.Create(Message, true, …)` or
+`Collectible := true`. A plain `Error()` still stops at the first failure, so the attribute on
+its own changes nothing. Handle the collected list and call `ClearCollectedErrors`, or the user
+gets one dialog with every message concatenated. A batch that stops at the first
 failure makes the user fix one row, re-run, and find the next — which is the same information
 delivered one item at a time over an afternoon.

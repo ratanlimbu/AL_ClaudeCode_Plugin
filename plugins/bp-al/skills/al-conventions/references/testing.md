@@ -6,9 +6,10 @@ claiming less than the reader thinks — which is worse than no suite, because i
 ## Tests live in a test app, never beside the code
 
 A test codeunit in the shipped app ships to the customer, drags the Microsoft test libraries
-into your dependency list, and blocks AppSource submission. The test app declares
-`"target": "Test"` and depends on `Library Assert`, `Any` and whichever `Library - *` codeunits
-it uses.
+into your dependency list, and blocks AppSource submission. The test app is a separate app whose
+codeunits carry `Subtype = Test`, and it depends on `Library Assert`, `Any` and whichever
+`Library - *` codeunits it uses. (There is no test value for `app.json`'s `target` — it takes
+only `Cloud` and `OnPrem`.)
 
 The dependency goes one way. The app under test never knows the test app exists.
 
@@ -60,16 +61,31 @@ global is a library codeunit that has made your tests order-dependent.
 
 | Value | Runs as |
 |---|---|
+| `Restrictive` (default) | starts at *D365 Full Access*, and each test **must** lower it — through `Library - Lower Permissions` or the *Permissions Mock* library — or it fails at runtime |
+| `NonRestrictive` | *D365 Full Access*, with no requirement to lower it |
 | `Disabled` | SUPER — permissions are not exercised at all |
-| `Restrictive` | the test's own permission set only |
-| `NonRestrictive` | the permissions plus SUPER-equivalent reads |
 
-`Disabled` is the default and it is why permission defects survive a green suite: on the
-development machine everyone is SUPER, and in production nobody is. If the change adds objects,
-one test runs `Restrictive` against the permission set that ships with them.
+The permission set actually applied is decided by the test runner's `OnBeforeTestRun`, which is
+why a suite behaves differently under a different runner.
 
-`TransactionModel` is the separate setting that governs rollback — `AutoRollback` is the
-default and returns the database to its prior state after each test.
+`Disabled` is the value that lets permission defects survive a green suite: on the development
+machine everyone is SUPER, and in production nobody is. It is also the value a codeunit gets
+written with when `Restrictive` "gets in the way". If the change adds objects, one test lowers
+its permissions to exactly the set that ships with them.
+
+## Isolation is the runner's job, and it is off by default
+
+Two settings, on two different objects:
+
+- **`TransactionModel`**, per test method. `AutoRollback` rolls back at the end of the test and
+  makes any `Commit` in the code under test an error. `AutoCommit` lets `Commit` happen and
+  leaves the changes in the database. `None` gives each page interaction its own transaction.
+- **`TestIsolation`**, on the **test runner** codeunit — `Function`, `Codeunit` or `Disabled`.
+  **`Disabled` is the default: nothing is rolled back between tests.** It is the only setting
+  that undoes changes the code under test explicitly committed.
+
+A suite that relies on rollback it never asked for is order-dependent in exactly the way the
+section above describes.
 
 ## Handlers are declared, and must be consumed
 

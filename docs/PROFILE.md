@@ -61,7 +61,7 @@ shape.
 | `apps[].name` | string | From `app.json`. |
 | `apps[].idRanges` | `[[from, to], …]` | From `app.json`. Used to check that claimed IDs are in range. |
 | `apps[].prefix` | string \| null | Mandatory prefix or affix. `null` when the project has none, or when detection was not confident. |
-| `apps[].isTest` | boolean | Test app, by `"target": "Test"`, a Microsoft test-library dependency, or a `*Test*` name. |
+| `apps[].isTest` | boolean | Test app, by a Microsoft test-library dependency, a `Subtype = Test` codeunit, or a `*Test*` name. |
 | `dependencies[]` | array | Non-Microsoft dependencies whose source you have locally. |
 | `dependencies[].name` | string | As it appears in `app.json`. |
 | `dependencies[].sourcePath` | string \| null | Where that dependency's source lives. **Searched before anything is reported as missing** — the object you need may already exist one layer down. |
@@ -74,7 +74,7 @@ shape.
 | `tests.runCommand` | string \| null | How to run the test suite. Detected from the VS Code tasks, an AL Test Runner setting or a root script, and **confirmed by a human** exactly as `build.command` is. `null` when the tests only run in CI, or at all. |
 | `authority[]` | string[] | Paths to the documents that decide things here, **in precedence order**, most authoritative first. Paths only — content is read on demand by the stage that needs it. |
 | `specs.mode` | `"file"` \| `"inline"` | Whether stage 1 writes a spec document or keeps the contract in the conversation. |
-| `specs.dir` | string \| null | Where spec documents go. **Only a directory that already exists** — the plugin never creates one. |
+| `specs.dir` | string \| null | Where spec documents go. **Only a directory that already exists** — the plugin never creates one. Design documents from `/bp-al:design` go here too. |
 | `hotspots[]` | glob[] | Areas where any change is flagged for human review regardless of correctness. |
 | `forbidden[]` | `{pattern, why}[]` | Regex patterns banned **in this project**, each with its reason. The reason is reported with the finding. |
 | `appsource.target` | `"appsource"` \| `"pte"` \| null | Which cop's rules this app is held to. `null` means undetermined, not "not AppSource". |
@@ -165,9 +165,10 @@ the projects that had tightened.
 
 ### `policy.requireTests`
 
-Test *execution* is not in this version — `tests.runCommand` is reserved and stays `null` — so
-`requireTests` defaults to `false`. Without that default, every repository with a test app
-returns `UNVERIFIED` forever, and a verdict that is always the same carries no information.
+Stages 2 and 3 run the tests when `tests.runCommand` is set, and it is detected and confirmed
+like `build.command`. It is still `null` on every repository whose tests run only in CI, so
+`requireTests` defaults to `false`. Without that default, every such repository returns
+`UNVERIFIED` forever, and a verdict that is always the same carries no information.
 
 It is not a licence to be vague. The review's `TESTS` line is printed whatever the setting
 says, so `VERIFIED` never gets to mean "the tests passed" when what happened is that they did
@@ -195,7 +196,7 @@ dependency on a non-Microsoft app · more than 100 `.al` files. Otherwise `custo
 | Contract | inline in the conversation | written to `specs.dir` |
 | Implementation | directly in the main context | bounded `al-implementer` subagent |
 | Review | a pass in the same context | `al-reviewer` in a fresh context |
-| Files written | the code only | the code, plus the spec |
+| Files written | the code only | the code, plus the spec and any design |
 
 Override for one run with `--quick` (force `customisation`) or `--deep` (force `product`).
 

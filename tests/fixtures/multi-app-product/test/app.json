@@ -4,7 +4,6 @@
   "publisher": "Fabrikam",
   "version": "1.0.0.0",
   "brief": "Fictional fixture test app. Not a real product.",
-  "target": "Test",
   "platform": "26.0.0.0",
   "application": "26.0.0.0",
   "dependencies": [

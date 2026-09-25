@@ -25,9 +25,10 @@ Each step falls through to the next when it finds nothing.
 `dependencies`, `internalsVisibleTo` from it. The app's `path` in the profile is the
 directory holding `app.json`, relative to the repository root.
 
-**Test apps** — an app is a test app if its `app.json` has `"target": "Test"`, or it depends
-on a Microsoft test library (`Library Assert`, `Any`, `Library Variable Storage`,
-`Tests-TestLibraries`), or its name matches `*Test*`.
+**Test apps** — an app is a test app if it depends on a Microsoft test library
+(`Library Assert`, `Any`, `Library Variable Storage`, `Tests-TestLibraries`), or its `.al` files
+contain a codeunit with `Subtype = Test`, or its name matches `*Test*`. (`app.json`'s `target`
+takes only `Cloud` and `OnPrem`, so it says nothing about tests.)
 
 **Prefix / affix** — `AppSourceCop.json`'s `mandatoryPrefix` or `mandatoryAffixes` if present.
 Otherwise derive it: list the quoted object names across `.al` files, take the most common

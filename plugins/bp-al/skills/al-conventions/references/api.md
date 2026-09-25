@@ -70,8 +70,9 @@ A FlowField on an API page is calculated for every row of every response, and a 
 can run to thousands of rows. One careless `CalcFormula` becomes the slowest thing in the
 system.
 
-`SetLoadFields` does not apply to pages, so the shape of the page *is* the query — expose the
-fields consumers need, not the table. Everything in the `performance` theme applies here with a
+The platform applies partial records to an API page from its layout, so the shape of the page
+*is* the query — expose the fields consumers need, not the table. A field read only in a trigger
+is not in that set and is JIT-loaded per row; add it with `AddLoadFields` in `OnFindRecord`. Everything in the `performance` theme applies here with a
 multiplier.
 
 ## Let the platform filter

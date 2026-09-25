@@ -19,6 +19,22 @@ this stage exists to avoid.
 
 If the profile is absent, run `bp-al:al-profile` first.
 
+### An approved design binds this spec
+
+If an approved design exists for this request — its path given to you, or approved earlier in
+this conversation — read it before anything else. A design whose Status is `Proposed` or
+`Superseded` is a draft and binds nothing.
+
+- The spec **must not contradict any `TD-n`**. OBJECTS and CRITERIA cite the decision they
+  implement: `per TD-2`.
+- If the spec needs to depart from a decision, stop and put the conflict in `OPEN`. The human
+  either supersedes the design with `/bp-al:design` or changes the spec. You do not choose.
+- The design's `UNVERIFIED` entries carry into `OPEN` unless you resolved them here.
+
+If the design stage re-triaged the request to MEDIUM — fewer than three genuine decisions — there
+is no design to bind you. Take the decisions it made as `OPEN` entries with its recommendation
+as the proposed assumption; the human settles them at this gate.
+
 ## Locate before you specify
 
 Find the objects the request concerns before describing a change to them. Grep for the
@@ -39,7 +55,9 @@ PROBLEM        <what is wrong or missing, in the project's own terms>
 RULE SOURCE    <the regulation, ticket, specification section or conversation that
                 decides the behaviour — and where to read it>
 OBJECTS        <each object to add or change: type, name, ID where the project
-                claims IDs, and which app it lives in>
+                claims IDs, and which app it lives in — plus every non-AL file
+                the change must edit (app.json, the ID register), since stage 2
+                edits nothing this list does not name>
 CRITERIA       <numbered; each one independently checkable by someone who did not
                 write the code>
 OUT OF SCOPE   <explicitly; the things a reasonable reader would assume are included

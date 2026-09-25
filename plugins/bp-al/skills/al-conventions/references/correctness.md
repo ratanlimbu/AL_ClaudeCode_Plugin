@@ -61,8 +61,9 @@ as the new thing's".
 
 ## Upgrade logic whenever persisted shape changes
 
-A new field with a default, a changed data classification, a value that must be back-filled —
-each needs an upgrade codeunit. Without it, existing companies carry the old shape forever and
+A new field whose existing rows need a value other than blank, a value that must be
+back-filled, data moving between fields or tables — each needs an upgrade codeunit. (A changed
+`DataClassification` does not: it is metadata, and no stored value moves.) Without it, existing companies carry the old shape forever and
 the new code reads a blank.
 
 ## Never abort a batch on one bad row

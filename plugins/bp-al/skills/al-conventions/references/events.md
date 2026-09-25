@@ -7,9 +7,9 @@ halves are contracts, and both are easy to get wrong in ways that compile.
 
 | Attribute | Means |
 |---|---|
-| `[IntegrationEvent(IncludeSender, GlobalVarAccess)]` | an extensibility hook in your own code, for consumers you expect |
-| `[BusinessEvent(Isolated)]` | a stable published contract, changed only at a major version |
-| `[InternalEvent(IncludeSender)]` | inside this app only; not part of your public surface |
+| `[IntegrationEvent(IncludeSender, GlobalVarAccess [, Isolated])]` | an extensibility hook in your own code, for consumers you expect |
+| `[BusinessEvent(IncludeSender [, Isolated])]` | a stable published contract, changed only at a major version |
+| `[InternalEvent(IncludeSender [, Isolated])]` | inside this app only; not part of your public surface |
 
 `[BusinessEvent]` is the heavier promise: it says other people may build on this and you will
 not move it. Use `[IntegrationEvent]` unless you mean that.
@@ -77,6 +77,22 @@ This is the fact that everything else here follows from.
 - **A slow subscriber is a slow publisher.** Subscribers run inline and in sequence. A web call
   or a table scan inside one lands on every user of the thing you subscribed to. Queue the work
   instead — a job queue entry, a task.
+
+### The exception: isolated events
+
+A publisher declared with `Isolated = true` runs each subscriber in its own transaction. A
+failing subscriber has its own table changes rolled back, and the publisher carries on. Three
+limits make it narrower than it sounds:
+
+- **Only if the caller committed first.** Inside an open write transaction an isolated event
+  runs like a normal one, and a subscriber's error fails the whole operation again.
+- **Only table writes roll back.** An HTTP call, a `var` parameter, a `SingleInstance` global —
+  all survive the failure.
+- **Not during install, uninstall or upgrade**, which must be one transaction.
+
+Isolation is the publisher's decision, not the subscriber's. Choosing it for an event you
+publish is a design choice worth making on purpose: it trades "the subscriber can veto" for
+"the subscriber cannot break me".
 
 ## `SingleInstance` subscribers keep state
 
